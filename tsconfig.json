@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "declaration": false,
+    "sourceMap": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "ts-node": {
+    "transpileOnly": true
+  },
+  "include": [
+    "shared/**/*.ts",
+    "resume-creation/**/*.ts",
+    "trip-planning/**/*.ts",
+    "social-media-team/**/*.ts",
+    "rag-knowledge-base/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

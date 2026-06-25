@@ -1,0 +1,48 @@
+{
+  "name": "kaiban-distributed-examples",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runnable, completely-working distributed ports of KaibanJS examples, built on the kaiban-distributed actor-model runtime (BullMQ/Kafka, HITL, real-time Kanban board).",
+  "license": "GPL-3.0-or-later",
+  "author": "Andrei Besleaga",
+  "homepage": "https://github.com/andreibesleaga/kaiban-distributed-examples#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreibesleaga/kaiban-distributed-examples.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andreibesleaga/kaiban-distributed-examples/issues"
+  },
+  "keywords": [
+    "kaibanjs",
+    "kaiban-distributed",
+    "multi-agent",
+    "actor-model",
+    "ai-agents",
+    "bullmq",
+    "kafka",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "trip:orchestrator": "ts-node trip-planning/orchestrator.ts",
+    "social:orchestrator": "ts-node social-media-team/orchestrator.ts",
+    "rag:orchestrator": "ts-node rag-knowledge-base/orchestrator.ts"
+  },
+  "dependencies": {
+    "@kaibanjs/tools": "^0.8.0",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.4.0",
+    "kaiban-distributed": "^2.0.0",
+    "socket.io-client": "^4.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}

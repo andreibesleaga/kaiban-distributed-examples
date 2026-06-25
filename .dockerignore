@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.git
+.github
+**/runs
+*.log
+*.md
+viewer
+scripts

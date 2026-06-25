@@ -1,0 +1,128 @@
+# Social Media Team — fan-out/fan-in multi-node stack (BullMQ / Redis).
+#
+#   docker compose -f social-media-team/docker-compose.yml --env-file .env up -d --build
+#   docker compose -f social-media-team/docker-compose.yml run --rm orchestrator
+#
+# The four composer services all run the SAME composer-node.js image, selected by
+# AGENT_ID (tweet | linkedin | discord | blog) — the parallel fan-out tier.
+x-worker-env: &worker-env
+  REDIS_URL: redis://redis:6379
+  MESSAGING_DRIVER: bullmq
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "node_modules/kaiban-distributed/dist/src/main/index.js"]
+    ports: ["3000:3000"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_URL: redis://redis:6379
+      MESSAGING_DRIVER: bullmq
+      PORT: "3000"
+      SERVICE_NAME: kaiban-gateway
+      ROLE: gateway
+      AGENT_IDS: gateway
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  extractor:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/extractor-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: extractor
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  tweet:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/composer-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: tweet
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  linkedin:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/composer-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: linkedin
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  discord:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/composer-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: discord
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  blog:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/composer-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: blog
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  aggregator:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/aggregator-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: aggregator
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  orchestrator:
+    profiles: ["cli-only"]
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/social-media-team/orchestrator.js"]
+    depends_on:
+      gateway: { condition: service_healthy }
+    environment:
+      GATEWAY_URL: http://gateway:3000
+      REDIS_URL: redis://redis:6379
+      MESSAGING_DRIVER: bullmq
+      PROJECT: ${PROJECT:-KaibanJS}
+      RELEASE_NOTES: ${RELEASE_NOTES:-}
+      MAX_WORKFLOW_COST_USD: ${MAX_WORKFLOW_COST_USD:-0.50}
+      MAX_WORKFLOW_TOKENS: ${MAX_WORKFLOW_TOKENS:-0}
+    stdin_open: true
+    tty: true
+    healthcheck: { disable: true }

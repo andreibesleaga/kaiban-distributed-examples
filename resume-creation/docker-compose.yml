@@ -1,0 +1,83 @@
+# Resume Creation — minimal 2-agent sequential stack (BullMQ / Redis).
+#
+#   docker compose -f resume-creation/docker-compose.yml --env-file .env up -d --build
+#   docker compose -f resume-creation/docker-compose.yml run --rm orchestrator
+#
+# Pure LLM reasoning — needs only an LLM key. For Kafka, set MESSAGING_DRIVER=kafka
+# and add kafka/zookeeper services (see trip-planning/docker-compose.kafka.yml).
+x-worker-env: &worker-env
+  REDIS_URL: redis://redis:6379
+  MESSAGING_DRIVER: bullmq
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "node_modules/kaiban-distributed/dist/src/main/index.js"]
+    ports: ["3000:3000"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_URL: redis://redis:6379
+      MESSAGING_DRIVER: bullmq
+      PORT: "3000"
+      SERVICE_NAME: kaiban-gateway
+      ROLE: gateway
+      AGENT_IDS: gateway
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analyst:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/resume-creation/analyst-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: analyst
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  writer:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/resume-creation/writer-node.js"]
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      <<: *worker-env
+      AGENT_ID: writer
+    restart: on-failure
+    healthcheck: { disable: true }
+
+  orchestrator:
+    profiles: ["cli-only"]
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "dist/resume-creation/orchestrator.js"]
+    depends_on:
+      gateway: { condition: service_healthy }
+    environment:
+      GATEWAY_URL: http://gateway:3000
+      REDIS_URL: redis://redis:6379
+      MESSAGING_DRIVER: bullmq
+      CANDIDATE: ${CANDIDATE:-}
+      MAX_WORKFLOW_COST_USD: ${MAX_WORKFLOW_COST_USD:-0.50}
+      MAX_WORKFLOW_TOKENS: ${MAX_WORKFLOW_TOKENS:-0}
+    stdin_open: true
+    tty: true
+    healthcheck: { disable: true }

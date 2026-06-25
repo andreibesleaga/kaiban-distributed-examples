@@ -1,0 +1,44 @@
+# Infra-only stack for the LOCAL-DEV path: Redis + the kaiban-distributed gateway
+# (board + A2A + /health). Bring this up, then run an orchestrator/workers locally
+# with `npx ts-node`, or open viewer/board.html to watch the live Kanban.
+#
+#   docker compose -f docker-compose.infra.yml --env-file .env up -d --build
+#   npx ts-node trip-planning/orchestrator.ts        # (after starting the worker nodes)
+#
+# For a fully-containerised run of a single example, use that example's own
+# docker-compose.yml instead (it includes redis + gateway + workers + orchestrator).
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["node", "node_modules/kaiban-distributed/dist/src/main/index.js"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379
+      MESSAGING_DRIVER: bullmq
+      PORT: "3000"
+      SERVICE_NAME: kaiban-gateway
+      ROLE: gateway
+      AGENT_IDS: gateway
+      VALID_HITL_DECISIONS: ${VALID_HITL_DECISIONS:-PUBLISH,REVISE,REJECT}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

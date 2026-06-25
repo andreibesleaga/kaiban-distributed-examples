@@ -1,0 +1,152 @@
+/**
+ * Generic run logger — shared across all showcase examples.
+ *
+ * Wraps the package console logger and accumulates a structured JSON record of
+ * every step in a workflow (per-task tokens/cost/answer, errors, final outcome).
+ * Flushed to `<example>/runs/` at the end of each run.
+ *
+ * Generalised from the kaiban-distributed core `blog-team` run logger: the
+ * "topic" is now a free-form `subject` so any example can reuse it.
+ */
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
+
+export interface TaskEntry {
+  phase: string;
+  taskId: string;
+  agentId: string;
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCost: number;
+  answer?: string;
+  timestamp: string;
+}
+
+export interface ErrorEntry {
+  phase: string;
+  taskId: string;
+  agentId: string;
+  error: string;
+  timestamp: string;
+}
+
+export interface RunLog {
+  capturedAt: string;
+  example: string;
+  subject: string;
+  gatewayUrl: string;
+  driverType: string;
+  tasks: TaskEntry[];
+  errors: ErrorEntry[];
+  outcome?: string;
+  totalTokens: number;
+  totalCost: number;
+  durationMs?: number;
+  startTime: number;
+  endTime?: number;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50);
+}
+
+export class RunLogger {
+  private readonly record: RunLog;
+
+  constructor(
+    example: string,
+    subject: string,
+    gatewayUrl: string,
+    driverType: string,
+  ) {
+    this.record = {
+      capturedAt: new Date().toISOString(),
+      example,
+      subject,
+      gatewayUrl,
+      driverType,
+      tasks: [],
+      errors: [],
+      totalTokens: 0,
+      totalCost: 0,
+      startTime: Date.now(),
+    };
+  }
+
+  logTask(
+    phase: string,
+    taskId: string,
+    agentId: string,
+    parsed: {
+      inputTokens: number;
+      outputTokens: number;
+      estimatedCost: number;
+      answer?: string;
+    },
+  ): void {
+    this.record.tasks.push({
+      phase,
+      taskId,
+      agentId,
+      inputTokens: parsed.inputTokens,
+      outputTokens: parsed.outputTokens,
+      estimatedCost: parsed.estimatedCost,
+      answer: parsed.answer?.slice(0, 2000),
+      timestamp: new Date().toISOString(),
+    });
+    this.record.totalTokens += parsed.inputTokens + parsed.outputTokens;
+    this.record.totalCost += parsed.estimatedCost;
+  }
+
+  logError(phase: string, taskId: string, agentId: string, error: string): void {
+    this.record.errors.push({
+      phase,
+      taskId,
+      agentId,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  get totals(): { totalTokens: number; totalCost: number } {
+    return {
+      totalTokens: this.record.totalTokens,
+      totalCost: this.record.totalCost,
+    };
+  }
+
+  /** Board metadata shape (estimatedCost field name) for publishMetadata(). */
+  get meta(): { totalTokens: number; estimatedCost: number } {
+    return {
+      totalTokens: this.record.totalTokens,
+      estimatedCost: this.record.totalCost,
+    };
+  }
+
+  finish(outcome: string): void {
+    this.record.outcome = outcome;
+    this.record.endTime = Date.now();
+    this.record.durationMs = this.record.endTime - this.record.startTime;
+  }
+
+  async flush(dir: string): Promise<string> {
+    const target = path.resolve(
+      process.cwd(),
+      dir,
+      `${new Date().toISOString().replace(/[:.]/g, "-")}-${slugify(
+        this.record.subject || this.record.example,
+      )}.json`,
+    );
+    try {
+      await mkdir(path.dirname(target), { recursive: true });
+      await writeFile(target, JSON.stringify(this.record, null, 2));
+    } catch (err) {
+      console.error("[RunLogger] Failed to write run log:", err);
+    }
+    return target;
+  }
+}

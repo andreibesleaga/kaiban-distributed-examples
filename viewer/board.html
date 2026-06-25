@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self' https://cdn.socket.io; style-src 'self'; connect-src ws: wss: http: https:; img-src 'none';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="no-referrer">
+  <title>Kaiban Distributed — Live Board</title>
+  <link rel="stylesheet" href="board.css">
+</head>
+<body>
+
+<header>
+  <h1>⬡ Kaiban Distributed — Live Board</h1>
+  <span class="badge badge-connecting" id="conn-badge">Connecting...</span>
+  <span id="workflow-badge" style="font-size:0.75rem; color:#5e6c84"></span>
+</header>
+
+<!-- Banners (shown dynamically by board.js) -->
+<div id="banner-hitl" class="banner banner-hitl">
+  <div class="banner-title">⏸ HUMAN DECISION REQUIRED</div>
+  <div class="banner-msg" id="banner-hitl-msg"></div>
+  <div class="banner-hint">Open the React board to approve, revise, or reject.</div>
+</div>
+<div id="banner-error" class="banner banner-error">
+  <div class="banner-title">⛔ TASK FAILED</div>
+  <div class="banner-msg" id="banner-error-msg"></div>
+</div>
+<div id="banner-finished" class="banner banner-finished">
+  <div class="banner-title">✅ WORKFLOW COMPLETE</div>
+  <div class="banner-msg" id="banner-finished-msg"></div>
+</div>
+<div id="banner-stopped" class="banner banner-stopped">
+  <div class="banner-title">⏹ WORKFLOW ENDED</div>
+  <div class="banner-msg" id="banner-stopped-msg"></div>
+</div>
+
+<!-- Workflow status bar -->
+<div class="workflow-bar" id="workflow-bar">
+  <span class="workflow-label">Workflow:</span>
+  <span class="workflow-status ws-initial" id="workflow-status">INITIAL</span>
+  <span id="topic-label" style="font-size:0.8rem; color:#5e6c84; margin-left:8px"></span>
+</div>
+
+<!-- Agents -->
+<div class="agents-section">
+  <h2>Agents</h2>
+  <div class="agents-grid" id="agents-grid">
+    <div class="empty">Waiting for agent state...</div>
+  </div>
+</div>
+
+<!-- Kanban board -->
+<span class="tasks-label">Tasks</span>
+<div class="board">
+  <div class="column col-todo">
+    <div class="column-header">📋 TODO <span id="cnt-todo">0</span></div>
+    <div id="col-todo"></div>
+  </div>
+  <div class="column col-doing">
+    <div class="column-header"><span class="task-pulse"></span>DOING <span id="cnt-doing">0</span></div>
+    <div id="col-doing"></div>
+  </div>
+  <div class="column col-await">
+    <div class="column-header">👁 AWAITING <span id="cnt-await">0</span></div>
+    <div id="col-await"></div>
+  </div>
+  <div class="column col-done">
+    <div class="column-header">✅ DONE <span id="cnt-done">0</span></div>
+    <div id="col-done"></div>
+  </div>
+  <div class="column col-blocked">
+    <div class="column-header">🚫 BLOCKED <span id="cnt-blocked">0</span></div>
+    <div id="col-blocked"></div>
+  </div>
+</div>
+
+<!-- Economics metadata panel -->
+<div class="swarm-meta">
+  <span class="section-label">Economics</span>
+  <div class="swarm-meta-grid">
+    <div class="meta-item">
+      <span class="meta-label">Total Tokens</span>
+      <span class="meta-value" id="meta-tokens">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Estimated Cost</span>
+      <span class="meta-value" id="meta-cost">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Start Time</span>
+      <span class="meta-value" id="meta-start">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">End Time</span>
+      <span class="meta-value" id="meta-end">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Duration</span>
+      <span class="meta-value" id="meta-duration">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Event log -->
+<div class="log-section">
+  <h2>Event Stream</h2>
+  <div class="log-box" id="log-box">
+    <div class="log-entry">
+      <span class="log-time">--:--:--</span>
+      <span class="log-type">INIT</span>
+      <span class="log-msg">Waiting for connection to gateway...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Connection info -->
+<div id="connection-info">
+  <strong id="gateway-url-display">Gateway</strong>
+  <span id="conn-detail">Connecting...</span>
+</div>
+
+<script src="https://cdn.socket.io/4.8.0/socket.io.min.js"
+        integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd"
+        crossorigin="anonymous"></script>
+<script src="board.js"></script>
+</body>
+</html>
