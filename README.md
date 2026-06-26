@@ -1,9 +1,10 @@
-# kaiban-distributed-examples
+# Kaiban Distributed Examples
 
 > **Multi-agent AI as distributed, stateful actors.**
 
-Most agent frameworks ship as a single, in-process, sequential scripts: when one step
-crashes it can break the whole run, and "scaling" means a bigger box or paying more for different online services. **[Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed)**
+Most agent frameworks ship as monolithic sequential scripts: when one step
+crashes it can break the whole run, and "scaling" means a bigger box or paying for different online services.
+**[Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed)**
 is the **first project to bring the Actor-Model paradigm to Multi-Agent Systems (MAS)** in
 the JavaScript/TypeScript/Node.js ecosystem — an experimental, **production-shaped** runtime
 where every agent is a **stateful actor in its own process**, communicating only by messages
