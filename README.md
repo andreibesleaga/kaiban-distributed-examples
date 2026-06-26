@@ -29,14 +29,16 @@ real time.
 - ⚖️ Core library **dual-licensed Apache-2.0 / GPL** — safe to build on commercially.
 
 <p align="center">
-  <img src="images/KaibanExamples1.png" width="13%" alt="Kaiban Distributed example board 1" />
-  <img src="images/KaibanExamples2.png" width="13%" alt="Kaiban Distributed example board 2" />
-  <img src="images/KaibanExamples3.png" width="13%" alt="Kaiban Distributed example board 3" />
-  <img src="images/KaibanExamples4.png" width="13%" alt="Kaiban Distributed example board 4" />
-  <img src="images/KaibanExamples5.png" width="13%" alt="Kaiban Distributed example board 5" />
-  <img src="images/KaibanExamples6.png" width="13%" alt="Kaiban Distributed example board 6" />
-  <img src="images/KaibanExamples.gif" width="13%" alt="Kaiban Distributed examples animated" />
+  <a href="images/KaibanExamples1.png"><img src="images/KaibanExamples1.png" width="24%" alt="Kaiban Distributed example board 1" /></a>
+  <a href="images/KaibanExamples2.png"><img src="images/KaibanExamples2.png" width="24%" alt="Kaiban Distributed example board 2" /></a>
+  <a href="images/KaibanExamples3.png"><img src="images/KaibanExamples3.png" width="24%" alt="Kaiban Distributed example board 3" /></a>
+  <a href="images/KaibanExamples4.png"><img src="images/KaibanExamples4.png" width="24%" alt="Kaiban Distributed example board 4" /></a>
+  <a href="images/KaibanExamples5.png"><img src="images/KaibanExamples5.png" width="24%" alt="Kaiban Distributed example board 5" /></a>
+  <a href="images/KaibanExamples6.png"><img src="images/KaibanExamples6.png" width="24%" alt="Kaiban Distributed example board 6" /></a>
+  <a href="images/KaibanExamples.gif"><img src="images/KaibanExamples.gif" width="24%" alt="Kaiban Distributed examples animated" /></a>
 </p>
+
+<sub align="center">↑ click any thumbnail to open it at full size</sub>
 
 ### These examples are deliberately simple — the point is the substrate
 
