@@ -1,4 +1,4 @@
-# Kaiban Distributed Examples
+# Kaiban Distributed Systems
 
 > **Multi-agent AI as distributed, stateful actors.**
 
