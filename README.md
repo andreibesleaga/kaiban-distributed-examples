@@ -1,18 +1,65 @@
 # kaiban-distributed-examples
 
-Runnable, **completely-working** distributed ports of KaibanJS examples, built on
-the [`kaiban-distributed`](https://github.com/andreibesleaga/kaiban-distributed)
-actor-model runtime — enterprise messaging (BullMQ/Redis or Kafka), fault
-tolerance, human-in-the-loop gates, and a real-time Kanban board.
+> **Multi-agent AI as distributed, stateful actors — not a for-loop wrapped around an LLM.**
 
-Each upstream [KaibanJS example](https://www.kaibanjs.com/examples) (a single
-in-process `Team`) is re-expressed here as a set of **stateful actors**: every
-agent is its own worker process with a mailbox, an orchestrator coordinates them
-over the message bus, and the live board renders the whole thing.
+Most agent frameworks ship as a single, in-process, sequential script: when one step
+crashes it can break the whole run, and "scaling" means a bigger box — limits that bite
+hard at enterprise scale. **[Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed)**
+is the **first project to bring the Actor-Model paradigm to Multi-Agent Systems (MAS)** in
+the JavaScript/TypeScript/Node.js ecosystem — an experimental, **production-shaped** runtime
+where every agent is a **stateful actor in its own process**, communicating only by messages
+over a pluggable **enterprise bus (Kafka / Redis-BullMQ / AMQP)**. If an agent fails it
+crashes *cleanly* — Erlang/Kafka **"let it crash → DLQ"** applied to AI — without corrupting
+the fleet, and you scale **horizontally** (`docker compose up --scale searcher=8`) as well as
+**vertically** per node. This repo is a set of **runnable, completely-working examples** built
+on that runtime; the live **Kanban board** renders every agent moving TODO → DOING → DONE in
+real time.
 
-> This is a separate repo by design — the core `kaiban-distributed` package keeps
-> its 100% coverage gate and core-only published artifact; these examples depend
-> on the **published** package (`kaiban-distributed` + `kaiban-distributed/shared`).
+**What makes it unique** — a world-first combination in JS/TS, for agents *and* humans:
+
+- 🧩 **Swappable messaging layer** — toggle **Redis ⇄ Kafka** (AMQP next) with *zero* worker-code
+  changes, and drop agents straight onto messaging infrastructure you already run.
+- 📋 **Legible workflows** — a live **Kanban board** where **Human-in-the-Loop is a first-class
+  workflow column**: visualize, pause, and intervene on the hard tasks.
+- 🔌 **Standard federation** — built-in **A2A** gateway + **MCP** server/client (each agent can be
+  its own A2A/MCP client or server), so a KaibanJS agent can orchestrate alongside **LangGraph /
+  CrewAI** agents from different backends on one board.
+- 🛡️ **FinOps & governance** — a hot-path **action gate** blocks rogue behavior *before* tokens are
+  spent; hard `MAX_WORKFLOW_COST_USD` ceilings, audit logs, **OpenTelemetry**, GDPR-conscious,
+  SOC2-ready, **100% core test coverage**, real-broker chaos suites, and a signed supply chain.
+- ⚖️ Core library **dual-licensed Apache-2.0 / GPL** — safe to build on commercially.
+
+### These examples are deliberately simple — the point is the substrate
+
+Each example here ([KaibanJS example](https://www.kaibanjs.com/examples) ports) could be written
+in plain KaibanJS in a single process. They exist to make the **distributed substrate tangible**:
+the *same* agent code running as independent, message-passing, individually-scalable, observable
+services with **checkpoint/resume** and **HITL**. The real payoff arrives at enterprise scale —
+where Kaiban Distributed is meant to live:
+
+- **Drop agents onto streams you already have.** Point a worker at an existing **Kafka topic /
+  Redis stream / AMQP queue** and let agents read live data — transactions, logs, support tickets,
+  telemetry, industrial/IoT events — and *act* on it, with infinite-retention logs, schemas, and
+  near-real-time analytics from the underlying broker for free.
+- **Absorb event spikes elastically.** A *Customer-Support mega-incident*: webhooks stream thousands
+  of tickets into the A2A gateway, which load-balances across many "triage" nodes that use MCP to
+  check customer/issue/severity and draft responses or escalate (awaiting validation) — scale nodes
+  up during the spike, back down to save cost.
+- **Run compliance-critical swarms.** A *Financial-Audit* swarm (OCR → Risk → Compliance → Fraud)
+  that triggers a **HITL pause** the moment a violation is found and surfaces it on the board for
+  manual sign-off — the level of control enterprises require.
+- **Make classic, distributed software flows agentic.** Wrap existing microservice/streaming
+  pipelines with agents plus human checkpoints so the most complex tasks — reading streams of
+  information and running whole systems of work on them — become legible, governable, and affordable.
+
+> 📖 Built alongside the book *Agentic AI Architectures*. Deep dive:
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.0)
+> and its [companion Medium article](https://lnkd.in/d_DSNFju).
+
+> This is a separate repo by design — the core `kaiban-distributed` package keeps its 100% coverage
+> gate and core-only published artifact; these examples depend on the **published** package
+> (`kaiban-distributed` + `kaiban-distributed/shared`), each agent its own worker process with a
+> mailbox, coordinated over the message bus.
 
 ## Examples
 
