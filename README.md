@@ -1,10 +1,9 @@
 # kaiban-distributed-examples
 
-> **Multi-agent AI as distributed, stateful actors — not a for-loop wrapped around an LLM.**
+> **Multi-agent AI as distributed, stateful actors.**
 
-Most agent frameworks ship as a single, in-process, sequential script: when one step
-crashes it can break the whole run, and "scaling" means a bigger box — limits that bite
-hard at enterprise scale. **[Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed)**
+Most agent frameworks ship as a single, in-process, sequential scripts: when one step
+crashes it can break the whole run, and "scaling" means a bigger box or paying more for different online services. **[Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed)**
 is the **first project to bring the Actor-Model paradigm to Multi-Agent Systems (MAS)** in
 the JavaScript/TypeScript/Node.js ecosystem — an experimental, **production-shaped** runtime
 where every agent is a **stateful actor in its own process**, communicating only by messages
@@ -19,7 +18,7 @@ real time.
 
 - 🧩 **Swappable messaging layer** — toggle **Redis ⇄ Kafka** (AMQP next) with *zero* worker-code
   changes, and drop agents straight onto messaging infrastructure you already run.
-- 📋 **Legible workflows** — a live **Kanban board** where **Human-in-the-Loop is a first-class
+- 📋 **Legible workflows** — a live **Kanban board** simple viewer, where **Human-in-the-Loop is a first-class
   workflow column**: visualize, pause, and intervene on the hard tasks.
 - 🔌 **Standard federation** — built-in **A2A** gateway + **MCP** server/client (each agent can be
   its own A2A/MCP client or server), so a KaibanJS agent can orchestrate alongside **LangGraph /
@@ -29,12 +28,22 @@ real time.
   SOC2-ready, **100% core test coverage**, real-broker chaos suites, and a signed supply chain.
 - ⚖️ Core library **dual-licensed Apache-2.0 / GPL** — safe to build on commercially.
 
+<p align="center">
+  <img src="images/KaibanExamples1.png" width="13%" alt="Kaiban Distributed example board 1" />
+  <img src="images/KaibanExamples2.png" width="13%" alt="Kaiban Distributed example board 2" />
+  <img src="images/KaibanExamples3.png" width="13%" alt="Kaiban Distributed example board 3" />
+  <img src="images/KaibanExamples4.png" width="13%" alt="Kaiban Distributed example board 4" />
+  <img src="images/KaibanExamples5.png" width="13%" alt="Kaiban Distributed example board 5" />
+  <img src="images/KaibanExamples6.png" width="13%" alt="Kaiban Distributed example board 6" />
+  <img src="images/KaibanExamples.gif" width="13%" alt="Kaiban Distributed examples animated" />
+</p>
+
 ### These examples are deliberately simple — the point is the substrate
 
-Each example here ([KaibanJS example](https://www.kaibanjs.com/examples) ports) could be written
-in plain KaibanJS in a single process. They exist to make the **distributed substrate tangible**:
+Each example here ([KaibanJS example](https://www.kaibanjs.com/examples) ports) could be implemented
+in plain KaibanJS more simple, but they exist here to make the **distributed substrate tangible**:
 the *same* agent code running as independent, message-passing, individually-scalable, observable
-services with **checkpoint/resume** and **HITL**. The real payoff arrives at enterprise scale —
+services with **checkpoint/resume** and **HITL**. The real payoff arrives at Enterprise Scale —
 where Kaiban Distributed is meant to live:
 
 - **Drop agents onto streams you already have.** Point a worker at an existing **Kafka topic /
@@ -52,14 +61,16 @@ where Kaiban Distributed is meant to live:
   pipelines with agents plus human checkpoints so the most complex tasks — reading streams of
   information and running whole systems of work on them — become legible, governable, and affordable.
 
-> 📖 Built alongside the book *Agentic AI Architectures*. Deep dive:
-> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.0)
+> 📖 Built alongside and featured in the author's upcoming book **Agentic AI Architectures**. Deep dive:
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.0), with its examples (`blog-team` and `global-research`),
 > and its [companion Medium article](https://lnkd.in/d_DSNFju).
 
-> This is a separate repo by design — the core `kaiban-distributed` package keeps its 100% coverage
+> This is a separate repo by design — the core `kaiban-distributed` package keeps 100% coverage
 > gate and core-only published artifact; these examples depend on the **published** package
 > (`kaiban-distributed` + `kaiban-distributed/shared`), each agent its own worker process with a
 > mailbox, coordinated over the message bus.
+>
+> Check the original repo [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) for React Board Viewer with HITL, observability and more. The React Board is a more powerful front-end that hooks into the system for advanced visualization of the workflow than this repo simple HTML/JavaScript `viewer`.
 
 ## Examples
 
