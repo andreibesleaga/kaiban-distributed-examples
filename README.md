@@ -44,7 +44,7 @@ real time.
 ### These examples are deliberately simple — the point is the substrate
 
 Each example here ([KaibanJS example](https://www.kaibanjs.com/examples) ports) could be implemented
-in plain KaibanJS more simple, but they exist here to make the **distributed substrate tangible**:
+in plain KaibanJS easier, but they exist here to make the **distributed substrate tangible**:
 the *same* agent code running as independent, message-passing, individually-scalable, observable
 services with **checkpoint/resume** and **HITL**. The real payoff arrives at Enterprise Scale —
 where Kaiban Distributed is meant to live:
