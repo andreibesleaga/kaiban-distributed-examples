@@ -5,7 +5,7 @@
 #   orchestrator  → node dist/<example>/orchestrator.js
 #
 # Stage 1: build our TypeScript examples.
-FROM node:22.14-alpine AS builder
+FROM node:22.23.1-alpine AS builder
 WORKDIR /app
 RUN apk upgrade --no-cache
 COPY package*.json ./
@@ -19,7 +19,7 @@ COPY rag-knowledge-base/ ./rag-knowledge-base/
 RUN npm run build
 
 # Stage 2: prod runtime.
-FROM node:22.14-alpine AS runner
+FROM node:22.23.1-alpine AS runner
 WORKDIR /app
 RUN apk upgrade --no-cache
 RUN addgroup -S kaiban && adduser -S kaiban -G kaiban
