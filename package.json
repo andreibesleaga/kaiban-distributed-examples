@@ -37,7 +37,7 @@
     "@kaibanjs/tools": "^0.8.0",
     "dotenv": "^16.4.5",
     "ioredis": "^5.4.0",
-    "kaiban-distributed": "^2.0.0",
+    "kaiban-distributed": "^2.0.2",
     "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
