@@ -12,7 +12,7 @@ chosen by the container's start `command`:
 
 | Role | Start command | Notes |
 |------|---------------|-------|
-| **gateway** | `node node_modules/kaiban-distributed/dist/src/main/index.js` | HTTP + Socket.io board + A2A + `/health` on `PORT` (3000). Env: `ROLE=gateway`, `AGENT_IDS=gateway`. |
+| **gateway** | `node node_modules/kaiban-distributed/dist/src/main/index.js` | HTTP + Socket.io board + A2A + `/health` on `PORT` (3000). Env: `ROLE=gateway`, `AGENT_IDS=<the worker agent ids>` (the gateway runs no agents; its agent card advertises one skill per id). |
 | **worker node** (one per agent) | `node dist/<example>/<role>-node.js` | Consumes its own queue `kaiban-agents-<AGENT_ID>`. Env: `AGENT_ID=<id>`. **One process per agent.** |
 | **orchestrator** | `node dist/<example>/orchestrator.js` | Drives the workflow; short-lived. HITL examples (e.g. trip-planning) need a **TTY** (`stdin_open`/`tty`). |
 | **board** | static `viewer/board.html` + `viewer/board.js` | Connects to the gateway via `window.GATEWAY_URL` or `?gateway=<url>` query param. |
@@ -33,7 +33,7 @@ KAFKA_BROKERS=host:9092            # only when MESSAGING_DRIVER=kafka
 # Gateway
 PORT=3000
 ROLE=gateway                       # gateway role only
-AGENT_IDS=gateway                  # gateway role only
+AGENT_IDS=city-selector,local-expert,concierge   # gateway role only: the worker agent ids of the example (trip-planning shown)
 GATEWAY_URL=http://gateway:3000    # orchestrator → gateway
 
 # Worker
@@ -118,7 +118,7 @@ Railway runs one **service per role** from the same repo `Dockerfile`; you overr
 
 1. **Redis:** add the Railway **Redis** plugin → it exposes `REDIS_URL` to other services.
 2. **gateway service:** deploy the Dockerfile; default `CMD` already runs the gateway.
-   Set `ROLE=gateway`, `AGENT_IDS=gateway`, `PORT=3000`, `REDIS_URL`, LLM keys. Expose it
+   Set `ROLE=gateway`, `AGENT_IDS=<worker ids>`, `PORT=3000`, `REDIS_URL`, LLM keys. Expose it
    (Railway gives a public HTTPS domain → use as the board's `?gateway=` URL).
 3. **one worker service per agent:** same image, override start command, e.g.
    `node dist/trip-planning/city-selector-node.js`, set `AGENT_ID=city-selector` + LLM keys
@@ -211,7 +211,7 @@ One image, a **Deployment per role**, env-selected:
 
 ```yaml
 # gateway
-env: [{name: ROLE, value: gateway}, {name: AGENT_IDS, value: gateway},
+env: [{name: ROLE, value: gateway}, {name: AGENT_IDS, value: "city-selector,local-expert,concierge"},
       {name: PORT, value: "3000"}, {name: REDIS_URL, value: redis://redis:6379}]
 command: ["node", "node_modules/kaiban-distributed/dist/src/main/index.js"]
 # → Service + Ingress on 3000, readiness/liveness probe on /health

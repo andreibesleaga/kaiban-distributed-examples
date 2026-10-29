@@ -27,7 +27,7 @@ real time.
 - 🛡️ **FinOps & governance** — a hot-path **action gate** blocks rogue behavior *before* tokens are
   spent; hard `MAX_WORKFLOW_COST_USD` ceilings, audit logs, **OpenTelemetry**, GDPR-conscious,
   supports SOC 2 controls, **100% core test coverage**, real-broker chaos suites, and a signed supply chain.
-- ⚖️ Core library **dual-licensed Apache-2.0 / GPL** — safe to build on commercially.
+- ⚖️ The core library (`kaiban-distributed` on npm) is **Apache-2.0** — safe to build on commercially. This examples repository is GPL-3.0-or-later.
 
 <p align="center">
   <a href="images/KaibanExamples1.png"><img src="images/KaibanExamples1.png" width="24%" alt="Kaiban Distributed example board 1" /></a>
