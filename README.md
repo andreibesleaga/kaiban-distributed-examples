@@ -15,9 +15,9 @@ the fleet, and you scale **horizontally** (in the core repo's `global-research` 
 on that runtime; the live **Kanban board** renders every agent moving TODO → DOING → DONE in
 real time.
 
-**What makes it unique** — a world-first combination in JS/TS, for agents *and* humans:
+**What makes it unique** — a combination in JS/TS, for agents *and* humans:
 
-- 🧩 **Swappable messaging layer** — toggle **Redis ⇄ Kafka** (AMQP next) with *zero* worker-code
+- 🧩 **Swappable messaging layer** — toggle **Redis ⇄ Kafka** with *zero* worker-code
   changes, and drop agents straight onto messaging infrastructure you already run.
 - 📋 **Legible workflows** — a live **Kanban board** simple viewer, where **Human-in-the-Loop is a first-class
   workflow column**: visualize, pause, and intervene on the hard tasks.
@@ -26,7 +26,7 @@ real time.
   CrewAI** agents from different backends on one board.
 - 🛡️ **FinOps & governance** — a hot-path **action gate** blocks rogue behavior *before* tokens are
   spent; hard `MAX_WORKFLOW_COST_USD` ceilings, audit logs, **OpenTelemetry**, GDPR-conscious,
-  SOC2-ready, **100% core test coverage**, real-broker chaos suites, and a signed supply chain.
+  supports SOC 2 controls, **100% core test coverage**, real-broker chaos suites, and a signed supply chain.
 - ⚖️ Core library **dual-licensed Apache-2.0 / GPL** — safe to build on commercially.
 
 <p align="center">
@@ -50,7 +50,7 @@ services with **checkpoint/resume** and **HITL**. The real payoff arrives at Ent
 where Kaiban Distributed is meant to live:
 
 - **Drop agents onto streams you already have.** Point a worker at an existing **Kafka topic /
-  Redis stream / AMQP queue** and let agents read live data — transactions, logs, support tickets,
+  Redis stream** and let agents read live data — transactions, logs, support tickets,
   telemetry, industrial/IoT events — and *act* on it, with infinite-retention logs, schemas, and
   near-real-time analytics from the underlying broker for free.
 - **Absorb event spikes elastically.** A *Customer-Support mega-incident*: webhooks stream thousands
