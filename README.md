@@ -8,7 +8,7 @@ crashes it can break the whole run, and "scaling" means a bigger box or paying f
 is the **first project to bring the Actor-Model paradigm to Multi-Agent Systems (MAS)** in
 the JavaScript/TypeScript/Node.js ecosystem — an experimental, **production-shaped** runtime
 where every agent is a **stateful actor in its own process**, communicating only by messages
-over a pluggable **enterprise bus (Kafka / Redis-BullMQ; AMQP planned)**. If an agent fails it
+over a pluggable **enterprise bus (Kafka / Redis-BullMQ)**. If an agent fails it
 crashes *cleanly* — Erlang/Kafka **"let it crash → DLQ"** applied to AI — without corrupting
 the fleet, and you scale **horizontally** (in the core repo's `global-research` example: `docker compose up --scale searcher=8`) as well as
 **vertically** per node. This repo is a set of **runnable, completely-working examples** built
