@@ -266,7 +266,7 @@ flowchart TB
 each agent on a local Ollama:
 
 ```bash
-# Shared box (192.168.1.10): Redis + gateway. The stock compose file publishes :6379 without a password, so add one first (see Networking & security).
+# Shared box (192.168.1.10): Redis + gateway. The stock compose file publishes :6379 without a password, so add one first (see Networking & security). The stock compose files now bind Redis to 127.0.0.1, so for a shared box change the port mapping to the box's LAN address.
 docker compose -f docker-compose.infra.yml --env-file .env up -d   # exposes :6379 + :3000
 
 # Workstation — heavyweight writer on an 8B model
