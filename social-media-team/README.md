@@ -28,7 +28,7 @@ Redis, so a crash mid-run resumes from the last completed phase.
 ## Run it (fully containerised)
 
 ```bash
-cp ../.env.example ../.env     # set OPENAI_API_KEY (or OPENROUTER)
+cp .env.example .env            # from the repo root; set OPENAI_API_KEY (or OPENROUTER)
 docker compose -f social-media-team/docker-compose.yml --env-file .env up -d --build
 PROJECT="my-project" RELEASE_NOTES="$(cat CHANGELOG.md)" \
   docker compose -f social-media-team/docker-compose.yml run --rm orchestrator

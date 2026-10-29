@@ -23,8 +23,8 @@ City Selector     Local Expert       Travel Concierge      Approve / Revise / Re
 ## Run it (fully containerised)
 
 ```bash
-cp ../.env.example ../.env     # set OPENAI_API_KEY (or OPENROUTER) + optionally TAVILY_API_KEY
 # from the repo root:
+cp .env.example .env            # set OPENAI_API_KEY (or OPENROUTER) + optionally TAVILY_API_KEY
 docker compose -f trip-planning/docker-compose.yml --env-file .env up -d --build
 docker compose -f trip-planning/docker-compose.yml run --rm orchestrator
 # watch the live Kanban: open viewer/board.html in a browser

@@ -25,7 +25,7 @@ retrieving facts versus guessing.
 ## Run it (fully containerised)
 
 ```bash
-cp ../.env.example ../.env     # set OPENAI_API_KEY
+cp .env.example .env            # from the repo root; set OPENAI_API_KEY
 docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env up -d --build
 docker compose -f rag-knowledge-base/docker-compose.yml run --rm orchestrator
 # watch the live Kanban: open viewer/board.html
