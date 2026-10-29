@@ -8,9 +8,9 @@ crashes it can break the whole run, and "scaling" means a bigger box or paying f
 is the **first project to bring the Actor-Model paradigm to Multi-Agent Systems (MAS)** in
 the JavaScript/TypeScript/Node.js ecosystem — an experimental, **production-shaped** runtime
 where every agent is a **stateful actor in its own process**, communicating only by messages
-over a pluggable **enterprise bus (Kafka / Redis-BullMQ / AMQP)**. If an agent fails it
+over a pluggable **enterprise bus (Kafka / Redis-BullMQ; AMQP planned)**. If an agent fails it
 crashes *cleanly* — Erlang/Kafka **"let it crash → DLQ"** applied to AI — without corrupting
-the fleet, and you scale **horizontally** (`docker compose up --scale searcher=8`) as well as
+the fleet, and you scale **horizontally** (in the core repo's `global-research` example: `docker compose up --scale searcher=8`) as well as
 **vertically** per node. This repo is a set of **runnable, completely-working examples** built
 on that runtime; the live **Kanban board** renders every agent moving TODO → DOING → DONE in
 real time.
@@ -65,7 +65,7 @@ where Kaiban Distributed is meant to live:
   information and running whole systems of work on them — become legible, governable, and affordable.
 
 > 📖 Built alongside and featured in the author's upcoming book **Agentic AI Architectures**. Deep dive:
-> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.0), with its examples (`blog-team` and `global-research`),
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.2), with its examples (`blog-team` and `global-research`),
 > and its [companion Medium article](https://lnkd.in/d_DSNFju).
 
 > This is a separate repo by design — the core `kaiban-distributed` package keeps 100% coverage
@@ -113,6 +113,10 @@ Or use the helper script:
 ./scripts/run-example.sh start trip-planning --kafka    # Kafka
 ./scripts/run-example.sh stop  trip-planning
 ```
+
+`--kafka` works only for `trip-planning` and `social-media-team`, the two examples that have a
+`docker-compose.kafka.yml`. `stop` runs `docker compose down -v`; the compose files define no
+Redis volume, so any saved checkpoints are lost with the container.
 
 ## Local-dev path (no example containers)
 
@@ -195,10 +199,15 @@ workers are queue consumers, so don't put them on scale-to-zero serverless.
 | **Multi-device SLM swarm ⭐** | The differentiator: each agent runs on a **separate device** against one shared Redis (LAN/VPN/Tailscale) and a **local small model** via `OPENAI_BASE_URL` (Ollama/vLLM/LM Studio) — e.g. an 8B writer on a workstation, a 3B analyst on a laptop, a 1B classifier on a Pi. Heterogeneous, private, offline-capable, near-zero inference cost. |
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for concrete per-target steps, env, diagrams, and caveats.
+For how one example is wired (files, queues, checkpoints, board), see
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**; contributors and coding agents start with
+**[AGENTS.md](AGENTS.md)**.
 
 ## Verification status
 
-- `npm run build` and `npm run typecheck` — green for all three examples.
+- `npm run build` and `npm run typecheck` — green for all four examples. GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`,
+  `npm run typecheck` and `npm run build` on Node 22 for every push and pull request to `main`;
+  the repo has no automated tests, and CI does not start any example.
 - Worker boot + board plumbing verified live against Redis (actor starts, IDLE
   state published to `kaiban-state-events`).
 - End-to-end agent runs require your LLM key (and tool keys where noted); run any
@@ -206,7 +215,7 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for concrete per-target steps, env, diagr
 
 ## Appendix A — Upstream example feasibility (porting backlog)
 
-The three shipped examples are the easy, high-value ports. The rest of the
+The four shipped examples are the easy, high-value ports. The rest of the
 [18 KaibanJS examples](https://www.kaibanjs.com/examples) map onto this runtime as
 follows — same recipe, more agents:
 

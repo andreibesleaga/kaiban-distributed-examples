@@ -19,7 +19,7 @@ Analyst
 ## Run it (fully containerised)
 
 ```bash
-cp ../.env.example ../.env     # set OPENAI_API_KEY (or OPENROUTER_API_KEY)
+cp .env.example .env            # from the repo root; set OPENAI_API_KEY (or OPENROUTER_API_KEY)
 docker compose -f resume-creation/docker-compose.yml --env-file .env up -d --build
 docker compose -f resume-creation/docker-compose.yml run --rm orchestrator
 # watch the live Kanban: open viewer/board.html

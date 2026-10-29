@@ -39,6 +39,10 @@ GATEWAY_URL=http://gateway:3000    # orchestrator → gateway
 # Worker
 AGENT_ID=city-selector             # worker role only — picks the agent + its queue
 
+# Orchestrator (optional)
+WORKFLOW_ID=my-run                 # checkpoint key; default = prefix + hash of the run inputs
+CITY_WAIT_MS=120000                # per-phase timeout; names and defaults are in each example's phases.ts
+
 # LLM (choose one provider)
 OPENAI_API_KEY=...                 # standard OpenAI
 # OPENROUTER_API_KEY=...           # takes priority over OPENAI_API_KEY if set
@@ -240,7 +244,7 @@ a 1B model — all coordinated over the shared bus.
 ```mermaid
 flowchart TB
   subgraph hub["Shared infra (one box / cloud)"]
-    R[("Redis (LAN-bound, REDIS_PASSWORD/TLS)")]
+    R[("Redis (LAN-bound, password in REDIS_URL / TLS)")]
     GW["gateway + board"]
   end
   subgraph ws["Workstation (RTX GPU)"]
@@ -262,7 +266,7 @@ flowchart TB
 each agent on a local Ollama:
 
 ```bash
-# Shared box (192.168.1.10): Redis + gateway, Redis bound to the LAN + password.
+# Shared box (192.168.1.10): Redis + gateway. The stock compose file publishes :6379 without a password, so add one first (see Networking & security).
 docker compose -f docker-compose.infra.yml --env-file .env up -d   # exposes :6379 + :3000
 
 # Workstation — heavyweight writer on an 8B model
@@ -292,8 +296,8 @@ Any OpenAI-compatible local server works: **Ollama** (`http://localhost:11434/v1
 `llama3.2:1b`/`3b`, `qwen2.5:3b`, `phi3:mini` for small nodes; 7–8B on a GPU box.
 
 **Networking & security:**
-- Bind Redis to the LAN (not `0.0.0.0` on the open internet) and **set `REDIS_PASSWORD`**
-  (`redis://:password@host:6379`); use **TLS** (`rediss://...`) for untrusted links.
+- Bind Redis to the LAN (not `0.0.0.0` on the open internet) and **set a Redis password**
+  (carried in `REDIS_URL`: `redis://:password@host:6379`; there is no separate `REDIS_PASSWORD` variable); use **TLS** (`rediss://...`) for untrusted links.
 - For devices across sites, use a **mesh VPN** (Tailscale / WireGuard) and point `REDIS_URL`
   at the mesh IP — no ports exposed publicly.
 - Kafka works the same way (`MESSAGING_DRIVER=kafka`, `KAFKA_BROKERS=<lan-broker>`), but Redis
