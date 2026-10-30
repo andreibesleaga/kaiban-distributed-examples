@@ -70,7 +70,7 @@ services:
       PORT: "3000"
       SERVICE_NAME: kaiban-gateway
       ROLE: gateway
-      AGENT_IDS: gateway
+      AGENT_IDS: extractor,tweet,linkedin,discord,blog,aggregator
     restart: on-failure
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
