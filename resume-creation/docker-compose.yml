@@ -35,7 +35,7 @@ services:
       PORT: "3000"
       SERVICE_NAME: kaiban-gateway
       ROLE: gateway
-      AGENT_IDS: gateway
+      AGENT_IDS: analyst,writer
     restart: on-failure
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]

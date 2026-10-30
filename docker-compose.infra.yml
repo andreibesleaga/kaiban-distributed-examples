@@ -34,7 +34,9 @@ services:
       PORT: "3000"
       SERVICE_NAME: kaiban-gateway
       ROLE: gateway
-      AGENT_IDS: gateway
+      # The worker agent ids of the example you run (trip-planning shown); the
+      # agent card advertises one skill per id.
+      AGENT_IDS: ${AGENT_IDS:-city-selector,local-expert,concierge}
       VALID_HITL_DECISIONS: ${VALID_HITL_DECISIONS:-PUBLISH,REVISE,REJECT}
     restart: on-failure
     healthcheck:
