@@ -65,7 +65,7 @@ where Kaiban Distributed is meant to live:
   information and running whole systems of work on them — become legible, governable, and affordable.
 
 > 📖 Built alongside and featured in the author's upcoming book **Agentic AI Architectures**. Deep dive:
-> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.2), with its examples (`blog-team` and `global-research`),
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.0.3), with its examples (`blog-team` and `global-research`),
 > and its [companion Medium article](https://lnkd.in/d_DSNFju).
 
 > This is a separate repo by design — the core `kaiban-distributed` package keeps 100% coverage
