@@ -37,12 +37,41 @@
     "@kaibanjs/tools": "^0.8.0",
     "dotenv": "^16.4.5",
     "ioredis": "^5.4.0",
-    "kaiban-distributed": "^2.0.2",
+    "kaiban-distributed": "^2.0.3",
     "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
+  },
+  "overrides": {
+    "langsmith": ">=0.7.4",
+    "expr-eval": ">=2.0.2",
+    "form-data": ">=4.0.6",
+    "file-type": ">=16.5.4",
+    "@langchain/core": ">=1.2.20 <2",
+    "@langchain/community": ">=0.3.59",
+    "langchain": ">=0.3.37",
+    "axios": ">=1.16.1",
+    "protobufjs": ">=8.6.6",
+    "@grpc/grpc-js": ">=1.14.5",
+    "fast-uri": ">=4.1.5 <5",
+    "fast-xml-parser": ">=5.7.0",
+    "hono": ">=4.13.13",
+    "brace-expansion": ">=5.0.12 <6",
+    "js-yaml": ">=4.3.2 <5",
+    "ws": ">=8.21.0",
+    "qs": ">=6.16.0",
+    "uuid": ">=11.1.1",
+    "ip-address": ">=10.7.4 <11",
+    "socket.io-parser": ">=4.2.7 <5",
+    "glob": ">=10.5.0 <14",
+    "@opentelemetry/exporter-prometheus": ">=0.217.0",
+    "handlebars": ">=4.7.10 <5",
+    "proxy-addr": ">=2.0.8 <3",
+    "follow-redirects": ">=1.16.2 <2",
+    "fast-copy": ">=4.1.0 <5",
+    "body-parser": ">=2.4.0 <3"
   }
 }
