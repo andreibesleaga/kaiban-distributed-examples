@@ -37,6 +37,13 @@ services:
       CONTROL_PLANE_ENABLED: ${CONTROL_PLANE_ENABLED:-}
       # Board/HTTP stop commands need a board token (unset = board auth off, stop refused).
       BOARD_JWT_SECRET: ${BOARD_JWT_SECRET:-}
+      CHANNEL_SIGNING_SECRET: ${CHANNEL_SIGNING_SECRET:-}
+      # Before exposing the gateway beyond localhost (DEPLOYMENT.md, "Before exposing the gateway"):
+      # A2A_JWT_SECRET protects /a2a/rpc and /mcp, SOCKET_CORS_ORIGINS limits board origins,
+      # NODE_ENV=production makes the control plane refuse to run unsigned. Unset = local defaults.
+      A2A_JWT_SECRET: ${A2A_JWT_SECRET:-}
+      SOCKET_CORS_ORIGINS: ${SOCKET_CORS_ORIGINS:-}
+      NODE_ENV: ${NODE_ENV:-}
       ROLE: gateway
       # The worker agent ids of the example you run (trip-planning shown); the
       # agent card advertises one skill per id.

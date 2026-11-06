@@ -4,7 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -65,4 +65,23 @@ test("every documented orchestrator command in the compose headers reads the roo
 
 test("no compose file says 0 means unlimited", () => {
   for (const file of composeFiles) assert.doesNotMatch(read(file), /MAX_WORKFLOW_TOKENS:-0\}/, file);
+});
+
+test("the trip revision prompt receives the stop signal", () => {
+  assert.match(read("trip-planning/orchestrator.ts"), /ask\(rl, "What should change\? ", signal\)/);
+});
+
+test("every gateway block forwards the security variables from .env", () => {
+  const files = [
+    "docker-compose.infra.yml",
+    ...["trip-planning", "resume-creation", "social-media-team", "rag-knowledge-base"].flatMap((d) =>
+      ["docker-compose.yml", "docker-compose.kafka.yml"].map((f) => `${d}/${f}`),
+    ),
+  ].filter((f) => existsSync(path.join(ROOT, f)));
+  for (const f of files) {
+    const text = read(f);
+    for (const v of ["BOARD_JWT_SECRET", "CHANNEL_SIGNING_SECRET", "A2A_JWT_SECRET", "SOCKET_CORS_ORIGINS", "NODE_ENV"]) {
+      assert.match(text, new RegExp(`${v}: \\$\\{${v}:-\\}`), `${f} lacks ${v}`);
+    }
+  }
 });

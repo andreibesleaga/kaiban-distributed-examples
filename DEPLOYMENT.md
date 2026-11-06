@@ -76,7 +76,10 @@ the gateway a public domain, a load balancer or a LAN address, set these on the 
 | `A2A_JWT_SECRET` | Turns on JWT authentication for the A2A endpoints. Unset = authentication off. |
 | `BOARD_JWT_SECRET` | Requires a board token for the Socket.io handshake and for STOP ALL. The viewer reads the token from `viewer/board.html#token=<token>`. |
 | `SOCKET_CORS_ORIGINS` | The origins allowed to open the board socket (comma-separated). |
-| `NODE_ENV=production` | Makes the gateway refuse a wildcard CORS origin. The image does not set it. |
+| `NODE_ENV=production` | Makes the gateway refuse a wildcard CORS origin and, with `CONTROL_PLANE_ENABLED=true`, refuse to start without `CHANNEL_SIGNING_SECRET` (kaiban-distributed 2.1.2). The image does not set it. |
+| `CHANNEL_SIGNING_SECRET` | Signs the state, HITL and control channels; the same value on every service. |
+
+The compose files pass all of these from `.env` to the gateway (and the signing secret and control-plane flag to every service); unset means the local defaults.
 
 The Kafka broker in the `*.kafka.yml` files is published on `127.0.0.1:9092` only and uses PLAINTEXT;
 do not publish it further. A Redis password or `rediss://` in `REDIS_URL` (managed Redis on Railway,

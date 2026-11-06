@@ -195,7 +195,7 @@ async function handleDecision(deps: DecisionDeps): Promise<void> {
   }
 
   if (decision === "REVISE") {
-    const notes = await ask(rl, "What should change? ");
+    const notes = await ask(rl, "What should change? ", signal);
     process.stdout.write("\nRe-running the concierge with your notes…\n");
     // Stable, unique checkpoint key for the revision (derived from the original
     // plan task) — deterministic on resume, no Date.now() collision window.
