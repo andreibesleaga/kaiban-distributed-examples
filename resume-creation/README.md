@@ -37,7 +37,7 @@ CANDIDATE="$(cat my-notes.txt)" \
 ## Run it (local dev)
 
 ```bash
-docker compose -f docker-compose.infra.yml --env-file .env up -d --build
+AGENT_IDS=analyst,writer docker compose -f docker-compose.infra.yml --env-file .env up -d --build
 npx ts-node resume-creation/analyst-node.ts
 npx ts-node resume-creation/writer-node.ts
 npx ts-node resume-creation/orchestrator.ts
@@ -52,3 +52,17 @@ npx ts-node resume-creation/orchestrator.ts
 | `phases.ts` | analyze → write |
 | `orchestrator.ts` | Checkpointed 2-phase pipeline + budget guard + board |
 | `docker-compose.yml` | Redis + gateway + 2 workers + orchestrator |
+
+## Orchestrator settings
+
+Every variable below is optional. Compose reads it from `.env` (`--env-file .env`) or from the
+shell; an empty value counts as unset.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `CANDIDATE` | a built-in sample profile | The candidate notes to turn into a resume. |
+| `ANALYZE_WAIT_MS` | `120000` | Time allowed for the profile analysis. |
+| `WRITE_WAIT_MS` | `180000` | Time allowed for writing the resume. |
+| `WORKFLOW_ID` | `resume-` plus the first 16 hex characters of the SHA-256 of the candidate notes | Checkpoint key. A re-run with the same value resumes; set a different value to start a fresh run on the same inputs. |
+
+The spend caps (`MAX_WORKFLOW_COST_USD`, `MAX_WORKFLOW_TOKENS`) are in the [root README](../README.md#quick-start).

@@ -22,7 +22,7 @@ City Selector     Local Expert       Travel Concierge      Approve / Revise / Re
 
 **STOP ALL:** with `CONTROL_PLANE_ENABLED=true` (see the [root README](../README.md#emergency-stop-all)) a stop ends this run `STOPPED`, clears its checkpoint and exits with code 2.
 
-The human-review prompt can be answered in the terminal; `viewer/board.html` is read-only, so use the core repo's React board for the buttons. A STOP ALL ends the review wait.
+**Human review.** Answer the prompt in the orchestrator terminal, or use the buttons on the core repo's React board ([how to run it](https://github.com/andreibesleaga/kaiban-distributed#react-board-board)); `viewer/board.html` is read-only. In the terminal `[1] APPROVE` is the same decision as `PUBLISH` on the React board and in `VALID_HITL_DECISIONS`; `VIEW` is terminal-only. A STOP ALL ends the review wait.
 
 ## Run it (fully containerised)
 
@@ -53,7 +53,7 @@ docker compose -f trip-planning/docker-compose.kafka.yml --env-file .env run --r
 
 ```bash
 # 1. infra + gateway only
-docker compose -f docker-compose.infra.yml --env-file .env up -d --build
+AGENT_IDS=city-selector,local-expert,concierge docker compose -f docker-compose.infra.yml --env-file .env up -d --build
 # 2. each worker in its own terminal
 npx ts-node trip-planning/city-selector-node.ts
 npx ts-node trip-planning/local-expert-node.ts
@@ -71,3 +71,21 @@ ORIGIN="Tokyo" INTERESTS="temples, ramen" npx ts-node trip-planning/orchestrator
 | `phases.ts` | Per-phase dispatch → wait → forward-context |
 | `orchestrator.ts` | Checkpointed pipeline + budget guard + board + HITL |
 | `docker-compose.yml` / `.kafka.yml` | Full multi-node stack (BullMQ / Kafka) |
+
+## Orchestrator settings
+
+Every variable below is optional. Compose reads it from `.env` (`--env-file .env`) or from the
+shell; an empty value counts as unset.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `ORIGIN` | `New York` | Where the trip starts. |
+| `DATES` | `a long weekend next month` | When. |
+| `INTERESTS` | `history, food, and architecture` | What the traveller likes. |
+| `BUDGET` | `1500 USD` | Trip budget. |
+| `CITY_WAIT_MS` | `120000` | Time allowed for city selection. |
+| `EXPERT_WAIT_MS` | `180000` | Time allowed for local insights. |
+| `PLAN_WAIT_MS` | `240000` | Time allowed for the itinerary. |
+| `WORKFLOW_ID` | `trip-` plus the first 16 hex characters of the SHA-256 of the four trip inputs | Checkpoint key. A re-run with the same value resumes; set a different value to start a fresh run on the same inputs. |
+
+The spend caps (`MAX_WORKFLOW_COST_USD`, `MAX_WORKFLOW_TOKENS`) are in the [root README](../README.md#quick-start).

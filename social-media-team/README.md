@@ -49,7 +49,7 @@ A composer that fails does not sink the run (the aggregator notes the gap), but 
 ## Run it (local dev)
 
 ```bash
-docker compose -f docker-compose.infra.yml --env-file .env up -d --build
+AGENT_IDS=extractor,tweet,linkedin,discord,blog,aggregator docker compose -f docker-compose.infra.yml --env-file .env up -d --build
 # start the 6 workers (each in its own terminal):
 npx ts-node social-media-team/extractor-node.ts
 AGENT_ID=tweet    npx ts-node social-media-team/composer-node.ts
@@ -78,3 +78,19 @@ pipeline is unchanged.
 | `phases.ts` | extract → **fan-out + `waitAll`** → aggregate |
 | `orchestrator.ts` | Checkpointed fan-out/fan-in driver + budget guard + board |
 | `docker-compose.yml` / `.kafka.yml` | Full 6-worker stack (BullMQ / Kafka) |
+
+## Orchestrator settings
+
+Every variable below is optional. Compose reads it from `.env` (`--env-file .env`) or from the
+shell; an empty value counts as unset.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `PROJECT` | `Kaiban-Distributed` | Project name used in the posts. |
+| `RELEASE_NOTES` | a built-in sample | The release notes to turn into posts. |
+| `EXTRACT_WAIT_MS` | `120000` | Time allowed for the extraction. |
+| `COMPOSE_WAIT_MS` | `180000` | Time allowed for the four composers together. |
+| `AGGREGATE_WAIT_MS` | `180000` | Time allowed for the aggregation. |
+| `WORKFLOW_ID` | `social-` plus the first 16 hex characters of the SHA-256 of the project name and the release notes | Checkpoint key. A re-run with the same value resumes; set a different value to start a fresh run on the same inputs. |
+
+The spend caps (`MAX_WORKFLOW_COST_USD`, `MAX_WORKFLOW_TOKENS`) are in the [root README](../README.md#quick-start).
