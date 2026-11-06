@@ -3,7 +3,7 @@ import { startAgentNode } from "kaiban-distributed/shared";
 import { citySelectorConfig, CITY_QUEUE } from "./team-config";
 
 startAgentNode({
-  agentId: process.env["AGENT_ID"] ?? "city-selector",
+  agentId: "city-selector", // fixed: the orchestrator dispatches to this id, so AGENT_ID is not read
   queue: CITY_QUEUE,
   agentConfig: citySelectorConfig,
   displayName: "Peter Atlas",

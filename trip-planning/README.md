@@ -20,13 +20,17 @@ City Selector     Local Expert       Travel Concierge      Approve / Revise / Re
 - A **human approval gate** (HITL) ends the run; REVISE re-runs the concierge with
   your notes.
 
+**STOP ALL:** with `CONTROL_PLANE_ENABLED=true` (see the [root README](../README.md#emergency-stop-all)) a stop ends this run `STOPPED`, clears its checkpoint and exits with code 2.
+
+The human-review prompt can be answered in the terminal; `viewer/board.html` is read-only, so use the core repo's React board for the buttons. A STOP ALL ends the review wait.
+
 ## Run it (fully containerised)
 
 ```bash
 # from the repo root:
 cp .env.example .env            # set OPENAI_API_KEY (or OPENROUTER) + optionally TAVILY_API_KEY
 docker compose -f trip-planning/docker-compose.yml --env-file .env up -d --build
-docker compose -f trip-planning/docker-compose.yml run --rm orchestrator
+docker compose -f trip-planning/docker-compose.yml --env-file .env run --rm orchestrator
 # watch the live Kanban: open viewer/board.html in a browser
 ```
 
@@ -35,14 +39,14 @@ Customise the trip with env vars (compose reads them, or pass inline to the orch
 ```bash
 ORIGIN="Berlin" DATES="first week of October" \
 INTERESTS="food, history, live jazz" BUDGET="1500 EUR" \
-docker compose -f trip-planning/docker-compose.yml run --rm orchestrator
+docker compose -f trip-planning/docker-compose.yml --env-file .env run --rm orchestrator
 ```
 
 Kafka transport instead of Redis/BullMQ:
 
 ```bash
 docker compose -f trip-planning/docker-compose.kafka.yml --env-file .env up -d --build
-docker compose -f trip-planning/docker-compose.kafka.yml run --rm orchestrator
+docker compose -f trip-planning/docker-compose.kafka.yml --env-file .env run --rm orchestrator
 ```
 
 ## Run it (local dev, no example containers)

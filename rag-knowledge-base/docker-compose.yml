@@ -1,7 +1,7 @@
 # RAG Knowledge Base — single-agent + retrieval tool (BullMQ / Redis).
 #
 #   docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env up -d --build
-#   docker compose -f rag-knowledge-base/docker-compose.yml run --rm orchestrator
+#   docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env run --rm orchestrator
 #
 # Requires OPENAI_API_KEY (SimpleRAG uses OpenAI embeddings + synthesis), even if
 # your chat LLM is OpenRouter/local. For Kafka, set MESSAGING_DRIVER=kafka and add
@@ -27,6 +27,11 @@ services:
       MESSAGING_DRIVER: bullmq
       PORT: "3000"
       SERVICE_NAME: kaiban-gateway
+      # Emergency STOP ALL: set CONTROL_PLANE_ENABLED=true in .env, on every service.
+      CONTROL_PLANE_ENABLED: ${CONTROL_PLANE_ENABLED:-}
+      CHANNEL_SIGNING_SECRET: ${CHANNEL_SIGNING_SECRET:-}
+      # Board/HTTP stop commands need a board token (unset = board auth off, stop refused).
+      BOARD_JWT_SECRET: ${BOARD_JWT_SECRET:-}
       ROLE: gateway
       AGENT_IDS: specialist
     restart: on-failure
@@ -45,6 +50,9 @@ services:
       REDIS_URL: redis://redis:6379
       MESSAGING_DRIVER: bullmq
       AGENT_ID: specialist
+      CONTROL_PLANE_ENABLED: ${CONTROL_PLANE_ENABLED:-}
+      CHANNEL_SIGNING_SECRET: ${CHANNEL_SIGNING_SECRET:-}
+      KAIBAN_TELEMETRY_OPT_OUT: ${KAIBAN_TELEMETRY_OPT_OUT:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       RAG_OPENAI_API_KEY: ${RAG_OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
@@ -65,8 +73,11 @@ services:
       REDIS_URL: redis://redis:6379
       MESSAGING_DRIVER: bullmq
       QUESTIONS: ${QUESTIONS:-}
+      CONTROL_PLANE_ENABLED: ${CONTROL_PLANE_ENABLED:-}
+      CHANNEL_SIGNING_SECRET: ${CHANNEL_SIGNING_SECRET:-}
+      ANSWER_WAIT_MS: ${ANSWER_WAIT_MS:-180000}
       MAX_WORKFLOW_COST_USD: ${MAX_WORKFLOW_COST_USD:-0.50}
-      MAX_WORKFLOW_TOKENS: ${MAX_WORKFLOW_TOKENS:-0}
+      MAX_WORKFLOW_TOKENS: ${MAX_WORKFLOW_TOKENS:-unlimited}
     stdin_open: true
     tty: true
     healthcheck: { disable: true }

@@ -19,7 +19,7 @@
  */
 import "dotenv/config";
 import readline from "readline";
-import { createHash, randomUUID } from "crypto";
+import { createHash } from "crypto";
 import {
   createDriver,
   getDriverType,
@@ -29,13 +29,16 @@ import {
   waitForHITLDecision,
   workflowBudgetFromEnv,
   assertWithinBudget,
-  BudgetExceededError,
   createLogger,
 } from "kaiban-distributed/shared";
 import { ExampleStatePublisher, roster } from "../shared/state-publisher";
 import { RunLogger } from "../shared/run-logger";
 import { connectGateway } from "../shared/gateway";
-import { TRIP_AGENTS } from "./team-config";
+import { ask } from "../shared/ask";
+import { envOr } from "../shared/env";
+import { endFailedRun, exitUnlessZero } from "../shared/run-end";
+import { openStopSignal } from "../shared/stop-signal";
+import { TRIP_AGENTS } from "./roster";
 import {
   runCityPhase,
   runExpertPhase,
@@ -46,24 +49,22 @@ import {
 
 const log = createLogger("TripPlanning");
 
-const GATEWAY_URL = process.env["GATEWAY_URL"] ?? "http://localhost:3000";
-const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
+const GATEWAY_URL = envOr("GATEWAY_URL", "http://localhost:3000");
+const REDIS_URL = envOr("REDIS_URL", "redis://localhost:6379");
 
 const brief: TripBrief = {
-  origin: process.env["ORIGIN"] ?? "New York",
-  dates: process.env["DATES"] ?? "a long weekend next month",
-  interests: process.env["INTERESTS"] ?? "history, food, and architecture",
-  budget: process.env["BUDGET"] ?? "1500 USD",
+  origin: envOr("ORIGIN", "New York"),
+  dates: envOr("DATES", "a long weekend next month"),
+  interests: envOr("INTERESTS", "history, food, and architecture"),
+  budget: envOr("BUDGET", "1500 USD"),
 };
 
-const WORKFLOW_ID =
-  process.env["WORKFLOW_ID"] ??
-  `trip-${createHash("sha256")
-    .update(JSON.stringify(brief))
-    .digest("hex")
-    .slice(0, 16)}`;
+const WORKFLOW_ID = envOr(
+  "WORKFLOW_ID",
+  `trip-${createHash("sha256").update(JSON.stringify(brief)).digest("hex").slice(0, 16)}`,
+);
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const isKafka = getDriverType() === "kafka";
   const completedDriver = createDriver("-trip-orchestrator-completed");
@@ -72,7 +73,15 @@ async function main(): Promise<void> {
   const pub = new ExampleStatePublisher(REDIS_URL, roster(TRIP_AGENTS));
   const runLog = new RunLogger("trip-planning", brief.interests, GATEWAY_URL, getDriverType());
   const store = new RedisCheckpointStore(REDIS_URL);
-  const orch = new WorkflowOrchestrator({ workflowId: WORKFLOW_ID, router, store });
+  // Emergency STOP ALL: only with CONTROL_PLANE_ENABLED=true (see README).
+  const stop = await openStopSignal(REDIS_URL);
+  const stopSignal = stop?.signal;
+  const orch = new WorkflowOrchestrator({
+    workflowId: WORKFLOW_ID,
+    router,
+    store,
+    ...(stopSignal ? { stopSignal } : {}),
+  });
   const budget = workflowBudgetFromEnv();
 
   const gw = await connectGateway(GATEWAY_URL, (m) => log.info(m));
@@ -83,8 +92,11 @@ async function main(): Promise<void> {
     if (isKafka) await failedDriver.disconnect();
     await pub.disconnect();
     await store.disconnect();
+    await stop?.close();
     rl.close();
   };
+
+  let exitCode = 0;
 
   try {
     log.info("=== KAIBAN DISTRIBUTED — TRIP PLANNING ===");
@@ -98,7 +110,7 @@ async function main(): Promise<void> {
     // STEP 1 — City selection
     log.info("\nSTEP 1 — Peter Atlas is selecting the destination city…");
     const city = await orch.memoize<PhaseResult>("city", () =>
-      runCityPhase(brief, router, pub, completedDriver, runLog),
+      runCityPhase(brief, router, pub, completedDriver, runLog, stopSignal),
     );
     log.info(`\nCITY CHOICE:\n${city.text}\n`);
     assertWithinBudget(spend(runLog), budget);
@@ -106,7 +118,7 @@ async function main(): Promise<void> {
     // STEP 2 — Local insights
     log.info("STEP 2 — Sophia Lore is gathering local insights…");
     const insights = await orch.memoize<PhaseResult>("insights", () =>
-      runExpertPhase(brief, city.text, router, pub, completedDriver, runLog),
+      runExpertPhase(brief, city.text, router, pub, completedDriver, runLog, stopSignal),
     );
     log.info(`\nLOCAL INSIGHTS:\n${insights.text.slice(0, 600)}…\n`);
     assertWithinBudget(spend(runLog), budget);
@@ -114,34 +126,27 @@ async function main(): Promise<void> {
     // STEP 3 — Itinerary
     log.info("STEP 3 — Maxwell Journey is assembling the itinerary…");
     const plan = await orch.memoize<PhaseResult>("plan", () =>
-      runPlanPhase(brief, city.text, insights.text, router, pub, completedDriver, runLog),
+      runPlanPhase(brief, city.text, insights.text, router, pub, completedDriver, runLog, stopSignal),
     );
     log.info(`\n=== DRAFT ITINERARY ===\n${plan.text}\n`);
     assertWithinBudget(spend(runLog), budget);
 
     // STEP 4 — HITL
-    await handleDecision({ plan, brief, city, insights, router, pub, driver: completedDriver, rl, runLog, orch });
+    await handleDecision({
+      plan, brief, city, insights, router, pub, driver: completedDriver, rl, runLog, orch,
+      ...(stopSignal ? { signal: stopSignal } : {}),
+    });
 
     await orch.clear();
     log.info(`\nView board: open viewer/board.html (gateway ${GATEWAY_URL})`);
   } catch (err: unknown) {
-    const { totalTokens, totalCost } = runLog.totals;
-    if (err instanceof BudgetExceededError) {
-      pub.workflowStopped(randomUUID(), `Budget guard: ${err.reason}`, totalTokens, totalCost);
-      runLog.finish("STOPPED");
-      await orch.clear();
-      log.info(`\nBudget guard tripped — ${err.reason}. Workflow stopped.`);
-    } else {
-      const msg = err instanceof Error ? err.message : String(err);
-      pub.workflowStopped(randomUUID(), `Workflow error: ${msg}`, totalTokens, totalCost);
-      runLog.finish("FAILED");
-      throw err;
-    }
+    exitCode = await endFailedRun(err, { pub, runLog, orch, info: (m) => log.info(m) });
   } finally {
     const logPath = await runLog.flush("trip-planning/runs").catch(() => null);
     if (logPath) log.info(`Run log saved to ${logPath}`);
     await cleanup();
   }
+  return exitCode;
 }
 
 function spend(runLog: RunLogger): { totalTokens: number; estimatedCost: number } {
@@ -159,21 +164,24 @@ interface DecisionDeps {
   rl: readline.Interface;
   runLog: RunLogger;
   orch: WorkflowOrchestrator;
+  /** Emergency STOP ALL signal (CONTROL_PLANE_ENABLED): ends the HITL wait and the revision. */
+  signal?: AbortSignal;
 }
 
 async function handleDecision(deps: DecisionDeps): Promise<void> {
-  const { plan, brief, city, insights, pub, rl, runLog, router, driver, orch } = deps;
+  const { plan, brief, city, insights, pub, rl, runLog, router, driver, orch, signal } = deps;
   pub.awaitingHITL(plan.taskId, "Itinerary — Human Decision", "Approve / Revise / Reject");
 
   process.stdout.write(
     "\nHUMAN REVIEW: [1] APPROVE  [2] REVISE  [3] REJECT  [4] VIEW full itinerary\n" +
-      "  (Decide here or click Approve / Revise / Reject on the board)\n",
+      "  (Decide here, or from the core repo's React board; viewer/board.html is read-only)\n",
   );
 
   const decision = await waitForHITLDecision({
     taskId: plan.taskId,
     rl,
     redisUrl: REDIS_URL,
+    ...(signal ? { signal } : {}),
     onView: () => process.stdout.write(`\n--- ITINERARY ---\n${plan.text}\n---\n`),
   });
 
@@ -200,6 +208,7 @@ async function handleDecision(deps: DecisionDeps): Promise<void> {
         pub,
         driver,
         runLog,
+        signal,
       ),
     );
     process.stdout.write(`\n--- REVISED ITINERARY ---\n${revised.text}\n`);
@@ -214,11 +223,9 @@ async function handleDecision(deps: DecisionDeps): Promise<void> {
   runLog.finish("REJECTED");
 }
 
-function ask(rl: readline.Interface, q: string): Promise<string> {
-  return new Promise((resolve) => rl.question(q, (a) => resolve(a.trim())));
-}
-
-main().catch((err: unknown) => {
-  console.error("[TripPlanning] Fatal error:", err);
-  process.exit(1);
-});
+main()
+  .then(exitUnlessZero)
+  .catch((err: unknown) => {
+    console.error("[TripPlanning] Fatal error:", err);
+    process.exit(1);
+  });

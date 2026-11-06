@@ -17,7 +17,7 @@ cd "$ROOT"
 
 if [[ -z "$ACTION" || -z "$EXAMPLE" ]]; then
   echo "Usage: $0 <start|stop> <example-dir> [--kafka]"
-  echo "Examples: trip-planning | social-media-team | rag-knowledge-base"
+  echo "Examples: resume-creation | trip-planning | social-media-team | rag-knowledge-base"
   exit 1
 fi
 
@@ -33,14 +33,18 @@ ENV_ARG=()
 case "$ACTION" in
   start)
     echo "▶ Bringing up $EXAMPLE ($COMPOSE) …"
-    docker compose -f "$COMPOSE" "${ENV_ARG[@]}" up -d --build
+    docker compose -f "$COMPOSE" ${ENV_ARG[@]+"${ENV_ARG[@]}"} up -d --build
     echo "✓ Stack up. Board: open viewer/board.html (gateway http://localhost:3000)"
     echo "▶ Starting orchestrator (interactive HITL) …"
-    docker compose -f "$COMPOSE" "${ENV_ARG[@]}" run --rm orchestrator || true
+    # Keep the orchestrator's exit code (1 = failed, 2 = emergency STOP ALL); do not hide it.
+    rc=0
+    docker compose -f "$COMPOSE" ${ENV_ARG[@]+"${ENV_ARG[@]}"} run --rm orchestrator || rc=$?
+    echo "Orchestrator exit code: $rc"
+    exit "$rc"
     ;;
   stop)
     echo "⏹ Stopping $EXAMPLE …"
-    docker compose -f "$COMPOSE" "${ENV_ARG[@]}" down -v
+    docker compose -f "$COMPOSE" ${ENV_ARG[@]+"${ENV_ARG[@]}"} down -v
     ;;
   *)
     echo "Unknown action: $ACTION (use start|stop)"; exit 1 ;;

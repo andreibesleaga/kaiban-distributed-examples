@@ -13,10 +13,11 @@ import {
 import type { IMessagingDriver } from "kaiban-distributed";
 import { ExampleStatePublisher } from "../shared/state-publisher";
 import { RunLogger } from "../shared/run-logger";
+import { envInt } from "../shared/env";
 
-export const CITY_WAIT_MS = parseInt(process.env["CITY_WAIT_MS"] ?? "120000", 10);
-export const EXPERT_WAIT_MS = parseInt(process.env["EXPERT_WAIT_MS"] ?? "180000", 10);
-export const PLAN_WAIT_MS = parseInt(process.env["PLAN_WAIT_MS"] ?? "240000", 10);
+export const CITY_WAIT_MS = envInt("CITY_WAIT_MS", 120000);
+export const EXPERT_WAIT_MS = envInt("EXPERT_WAIT_MS", 180000);
+export const PLAN_WAIT_MS = envInt("PLAN_WAIT_MS", 240000);
 
 export interface TripBrief {
   origin: string;
@@ -38,6 +39,7 @@ export async function runCityPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<PhaseResult> {
   const taskId = await dispatchToAgent(driver, "city-selector", {
     instruction: `Choose the single best destination city for a trip from "${brief.origin}" during ${brief.dates}, budget ${brief.budget}, focused on these interests: ${brief.interests}. State the chosen city on the first line, then justify it.`,
@@ -48,9 +50,10 @@ export async function runCityPhase(
   pub.taskQueued(taskId, `Select city (${brief.interests})`, "city-selector");
 
   const raw = await router
-    .wait(taskId, CITY_WAIT_MS, "city selection")
+    .wait(taskId, CITY_WAIT_MS, "city selection", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "city-selector", "City selection", err.message);
+      runLog.logError("city-selector", taskId, "city-selector", err.message);
       throw err;
     });
 
@@ -68,6 +71,7 @@ export async function runExpertPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<PhaseResult> {
   const taskId = await dispatchToAgent(driver, "local-expert", {
     instruction:
@@ -80,9 +84,10 @@ export async function runExpertPhase(
   pub.taskQueued(taskId, "Gather local insights", "local-expert");
 
   const raw = await router
-    .wait(taskId, EXPERT_WAIT_MS, "local insights")
+    .wait(taskId, EXPERT_WAIT_MS, "local insights", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "local-expert", "Local insights", err.message);
+      runLog.logError("local-expert", taskId, "local-expert", err.message);
       throw err;
     });
 
@@ -101,6 +106,7 @@ export async function runPlanPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<PhaseResult> {
   const taskId = await dispatchToAgent(driver, "concierge", {
     instruction: `Assemble the final day-by-day itinerary for the trip (${brief.dates}, budget ${brief.budget}) using the city choice and local insights in the context. Follow the exact Markdown format from your background.`,
@@ -112,9 +118,10 @@ export async function runPlanPhase(
   pub.taskQueued(taskId, "Assemble itinerary", "concierge");
 
   const raw = await router
-    .wait(taskId, PLAN_WAIT_MS, "itinerary")
+    .wait(taskId, PLAN_WAIT_MS, "itinerary", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "concierge", "Itinerary", err.message);
+      runLog.logError("concierge", taskId, "concierge", err.message);
       throw err;
     });
 

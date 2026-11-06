@@ -33,6 +33,10 @@ services:
       MESSAGING_DRIVER: bullmq
       PORT: "3000"
       SERVICE_NAME: kaiban-gateway
+      # Emergency STOP ALL: set CONTROL_PLANE_ENABLED=true in .env, here and in your local workers/orchestrator.
+      CONTROL_PLANE_ENABLED: ${CONTROL_PLANE_ENABLED:-}
+      # Board/HTTP stop commands need a board token (unset = board auth off, stop refused).
+      BOARD_JWT_SECRET: ${BOARD_JWT_SECRET:-}
       ROLE: gateway
       # The worker agent ids of the example you run (trip-planning shown); the
       # agent card advertises one skill per id.

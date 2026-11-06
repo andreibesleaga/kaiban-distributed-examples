@@ -30,8 +30,8 @@ Redis, so a crash mid-run resumes from the last completed phase.
 ```bash
 cp .env.example .env            # from the repo root; set OPENAI_API_KEY (or OPENROUTER)
 docker compose -f social-media-team/docker-compose.yml --env-file .env up -d --build
-PROJECT="my-project" RELEASE_NOTES="$(cat CHANGELOG.md)" \
-  docker compose -f social-media-team/docker-compose.yml run --rm orchestrator
+PROJECT="my-project" RELEASE_NOTES="$(cat path/to/your/CHANGELOG.md)" \
+  docker compose -f social-media-team/docker-compose.yml --env-file .env run --rm orchestrator
 # watch the live Kanban: open viewer/board.html
 ```
 
@@ -39,8 +39,12 @@ Kafka transport:
 
 ```bash
 docker compose -f social-media-team/docker-compose.kafka.yml --env-file .env up -d --build
-docker compose -f social-media-team/docker-compose.kafka.yml run --rm orchestrator
+docker compose -f social-media-team/docker-compose.kafka.yml --env-file .env run --rm orchestrator
 ```
+
+**STOP ALL:** with `CONTROL_PLANE_ENABLED=true` (see the [root README](../README.md#emergency-stop-all)) a stop ends this run `STOPPED`, clears its checkpoint and exits with code 2.
+
+A composer that fails does not sink the run (the aggregator notes the gap), but if **all four** fail the run ends FAILED and nothing is checkpointed.
 
 ## Run it (local dev)
 
@@ -60,7 +64,7 @@ PROJECT="kaiban-distributed" npx ts-node social-media-team/orchestrator.ts
 ## Extending
 
 The extractor currently takes release notes as text. To pull them automatically,
-attach the `@kaibanjs/tools/github-issues` tool to the extractor config (it needs
+attach the `GithubIssues` tool (`import { GithubIssues } from "@kaibanjs/tools"`; there is no `@kaibanjs/tools/github-issues` subpath in 0.8.0) to the extractor config (it needs
 a GitHub token) and instruct it to summarise the latest release — the rest of the
 pipeline is unchanged.
 

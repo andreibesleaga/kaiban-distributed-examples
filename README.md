@@ -75,6 +75,29 @@ where Kaiban Distributed is meant to live:
 >
 > Check the original repo [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) for React Board Viewer with HITL, observability and more. The React Board is a more powerful front-end that hooks into the system for advanced visualization of the workflow than this repo simple HTML/JavaScript `viewer`.
 
+## Emergency STOP ALL
+
+One command kills every running model call, task and workflow of a stack. It needs
+`kaiban-distributed` 2.1.0 or later and is **off by default**.
+
+1. Set `CONTROL_PLANE_ENABLED=true` in `.env`. The compose files pass it to the gateway, every
+   worker and the orchestrator; on the ts-node path it must be in the environment of each process.
+2. Set `BOARD_JWT_SECRET` on the gateway and create a board token signed with it. Without the
+   secret the gateway refuses stop commands from the board.
+   Set `CHANNEL_SIGNING_SECRET` too (the same value on every service; the compose files pass it):
+   it signs the stop command and the saved stop marker, and with `NODE_ENV=production`
+   `kaiban-distributed` 2.1.2 or later refuses to start the control plane without it.
+3. Stop from the viewer: open `viewer/board.html#token=<board token>` (or
+   `viewer/board.html?gateway=http://localhost:3000#token=<board token>`). The **STOP ALL** button
+   appears when the gateway reports the control plane. The fragment is removed from the address bar
+   after it is read; the token is not stored.
+4. Or from a shell, with only `REDIS_URL` needed: `npm run stop-all -- --reason "runaway loop"`.
+   In a Docker stack: `docker compose -f <example>/docker-compose.yml exec gateway node node_modules/kaiban-distributed/dist/src/main/stop-all.js --reason "runaway loop"`.
+
+A stopped orchestrator publishes the board status `STOPPED`, clears its checkpoint (the next run
+starts fresh), ends the human-review wait, and exits with code 2. A stop reaches a social-media-team
+fan-out too: the run ends `STOPPED` instead of paying for the aggregator.
+
 ## Examples
 
 | Example | Topology | Demonstrates | Tools |
@@ -88,7 +111,7 @@ where Kaiban Distributed is meant to live:
 
 - Node.js ≥ 22, Docker (for Redis/Kafka + the containerised stacks)
 - An LLM key: `OPENAI_API_KEY` **or** `OPENROUTER_API_KEY` (or a local
-  OpenAI-compatible endpoint via `OPENAI_BASE_URL`)
+  OpenAI-compatible endpoint via `OPENAI_BASE_URL`, together with `OPENAI_API_KEY` set to any non-empty value such as `ollama`)
 - Optional per-example tool keys (see each example's README): `TAVILY_API_KEY`,
   `SERPER_API_KEY`. The RAG example needs `OPENAI_API_KEY` for embeddings.
 
@@ -100,11 +123,18 @@ cp .env.example .env            # add your OPENAI_API_KEY (or OPENROUTER_API_KEY
 
 # Fully containerised run of one example (redis + gateway + per-agent workers):
 docker compose -f trip-planning/docker-compose.yml --env-file .env up -d --build
-docker compose -f trip-planning/docker-compose.yml run --rm orchestrator
+docker compose -f trip-planning/docker-compose.yml --env-file .env run --rm orchestrator
 
 # Watch the live Kanban board:
 #   open viewer/board.html in a browser (it connects to the gateway on :3000)
 ```
+
+`--env-file .env` on the `run` line matters: Compose reads `.env` from the folder of the first
+`-f` file, not from the repo root, so without it the budget and input variables in `.env` are ignored.
+`MAX_WORKFLOW_COST_USD` / `MAX_WORKFLOW_TOKENS` take a number or the literal `unlimited`; `0` is not
+"unlimited".
+The cap counts the spend of the current process: after a crash, a resumed run starts counting from zero
+(phases restored from the checkpoint are not charged again), so the total across restarts can exceed it.
 
 Or use the helper script:
 
@@ -189,7 +219,7 @@ workers are queue consumers, so don't put them on scale-to-zero serverless.
 
 | Target | Fit / how |
 |--------|-----------|
-| **Local** | `docker compose -f <example>/docker-compose.yml up` (Redis + gateway + per-agent workers), or the ts-node dev path with `docker-compose.infra.yml`. |
+| **Local** | `docker compose -f <example>/docker-compose.yml --env-file .env up` (Redis + gateway + per-agent workers), or the ts-node dev path with `docker-compose.infra.yml`. |
 | **Railway** | Easiest always-on fit: one service per role from the Dockerfile (override start command), Redis plugin → `REDIS_URL`, keys in secrets. |
 | **Vercel\*** | Serverless does **not** fit the gateway or workers. Use it only for the **static board** and/or a thin "trigger a run" API against managed Redis (Upstash); run gateway + workers on an always-on host. |
 | **AWS** | ECS/Fargate, one service per role + ElastiCache (Redis) or MSK (Kafka). Simpler: EC2 + docker compose. k8s: EKS. |
@@ -205,9 +235,9 @@ For how one example is wired (files, queues, checkpoints, board), see
 
 ## Verification status
 
-- `npm run build` and `npm run typecheck` — green for all four examples. GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`,
-  `npm run typecheck` and `npm run build` on Node 22 for every push and pull request to `main`;
-  the repo has no automated tests, and CI does not start any example.
+- `npm run build`, `npm run typecheck` and `npm test` — green for all four examples. GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`,
+  `npm run typecheck`, `npm test` and `npm run build` on Node 22 for every push and pull request to `main`;
+  the tests are deterministic unit tests of the shared helpers (no Redis, no network), and CI does not start any example.
 - Worker boot + board plumbing verified live against Redis (actor starts, IDLE
   state published to `kaiban-state-events`).
 - End-to-end agent runs require your LLM key (and tool keys where noted); run any
@@ -236,9 +266,12 @@ follows — same recipe, more agents:
 
 Subpath import per tool, construct with its key, attach via the agent `tools` array:
 
-`@kaibanjs/tools/{tavily,serper,exa,firecrawl,wolframalpha,github-issues,`
+`@kaibanjs/tools/{tavily,serper,exa,firecrawl,`
 `jina-url-to-markdown,pdf-search,simple-rag,simple-rag-retrieve,website-search,`
 `textfile-search,zapier-webhook,make-webhook}`
+
+`GithubIssues` and `WolframAlpha` are not available as subpaths in `@kaibanjs/tools` 0.8.0; import them
+from the package root: `import { GithubIssues, WolframAlpha } from "@kaibanjs/tools"`.
 
 ## License
 

@@ -13,11 +13,12 @@ import {
 import type { IMessagingDriver } from "kaiban-distributed";
 import { ExampleStatePublisher } from "../shared/state-publisher";
 import { RunLogger } from "../shared/run-logger";
+import { envInt } from "../shared/env";
 import { COMPOSERS } from "./team-config";
 
-export const EXTRACT_WAIT_MS = parseInt(process.env["EXTRACT_WAIT_MS"] ?? "120000", 10);
-export const COMPOSE_WAIT_MS = parseInt(process.env["COMPOSE_WAIT_MS"] ?? "180000", 10);
-export const AGGREGATE_WAIT_MS = parseInt(process.env["AGGREGATE_WAIT_MS"] ?? "180000", 10);
+export const EXTRACT_WAIT_MS = envInt("EXTRACT_WAIT_MS", 120000);
+export const COMPOSE_WAIT_MS = envInt("COMPOSE_WAIT_MS", 180000);
+export const AGGREGATE_WAIT_MS = envInt("AGGREGATE_WAIT_MS", 180000);
 
 type Driver = Pick<IMessagingDriver, "publish">;
 
@@ -40,6 +41,7 @@ export async function runExtractPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<ExtractResult> {
   const taskId = await dispatchToAgent(driver, "extractor", {
     instruction: `Extract the most shareable highlights from these release notes for project "${project}". Return 3–6 crisp bullets, and include the project name and version.`,
@@ -50,9 +52,10 @@ export async function runExtractPhase(
   pub.taskQueued(taskId, `Extract highlights: ${project}`, "extractor");
 
   const raw = await router
-    .wait(taskId, EXTRACT_WAIT_MS, "extraction")
+    .wait(taskId, EXTRACT_WAIT_MS, "extraction", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "extractor", "Extraction", err.message);
+      runLog.logError("extractor", taskId, "extractor", err.message);
       throw err;
     });
 
@@ -75,6 +78,7 @@ export async function runComposePhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<ComposedDraft[]> {
   // 1. Fan-out — one task per platform composer.
   const dispatched = await Promise.all(
@@ -97,12 +101,15 @@ export async function runComposePhase(
     COMPOSE_WAIT_MS,
     "compose",
   );
+  // `waitAll` turns an emergency stop into per-task errors: end the run as stopped instead.
+  signal?.throwIfAborted();
 
   // 3. Map results back to their platform.
   const drafts: ComposedDraft[] = settled.map((s) => {
     const composer = byTask.get(s.taskId)!;
     if (s.error || s.result === undefined) {
       pub.taskFailed(s.taskId, composer.agentId, `${composer.platform} draft`, s.error ?? "no result");
+      runLog.logError("compose", s.taskId, composer.agentId, s.error ?? "no result");
       return { platform: composer.platform, agentId: composer.agentId, text: "", error: s.error ?? "no result" };
     }
     const parsed = parseHandlerResult(s.result);
@@ -112,7 +119,20 @@ export async function runComposePhase(
   });
 
   pub.publishMetadata(runLog.meta);
+  assertSomeDraftSucceeded(drafts);
   return drafts;
+}
+
+/**
+ * Partial failure is tolerated (the aggregator notes the gap); total failure is
+ * not. Throwing here, inside the memoized phase, means nothing is checkpointed,
+ * the run is FAILED, and a re-run dispatches all four composers again.
+ */
+export function assertSomeDraftSucceeded(drafts: ComposedDraft[]): void {
+  if (drafts.length > 0 && drafts.every((d) => d.error)) {
+    const causes = drafts.map((d) => `${d.platform}: ${d.error}`).join("; ");
+    throw new Error(`All ${drafts.length} composers failed — ${causes}`);
+  }
 }
 
 export async function runAggregatePhase(
@@ -122,6 +142,7 @@ export async function runAggregatePhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<string> {
   const context = drafts
     .map((d) => `### ${d.platform}\n${d.error ? `(failed: ${d.error})` : d.text}`)
@@ -136,9 +157,10 @@ export async function runAggregatePhase(
   pub.taskQueued(taskId, "Aggregate content pack", "aggregator");
 
   const raw = await router
-    .wait(taskId, AGGREGATE_WAIT_MS, "aggregation")
+    .wait(taskId, AGGREGATE_WAIT_MS, "aggregation", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "aggregator", "Aggregation", err.message);
+      runLog.logError("aggregator", taskId, "aggregator", err.message);
       throw err;
     });
 

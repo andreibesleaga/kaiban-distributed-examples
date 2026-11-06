@@ -16,6 +16,7 @@
 import type { KaibanAgentConfig } from "kaiban-distributed";
 import { buildLLMConfig } from "kaiban-distributed/shared";
 import { SimpleRAG } from "@kaibanjs/tools/simple-rag";
+import { envOr, firstEnv } from "../shared/env";
 import { PRODUCT_KB } from "./knowledge";
 
 export const SPECIALIST_QUEUE = "kaiban-agents-specialist";
@@ -25,8 +26,8 @@ const llmConfig = buildLLMConfig();
 /** KaibanJS/LangChain tools are structurally compatible; cast at the seam. */
 type AgentTools = NonNullable<KaibanAgentConfig["tools"]>;
 
-const ragKey = process.env["RAG_OPENAI_API_KEY"] ?? process.env["OPENAI_API_KEY"];
-const content = process.env["RAG_CONTENT"] ?? PRODUCT_KB;
+const ragKey = firstEnv(["RAG_OPENAI_API_KEY", "OPENAI_API_KEY"]);
+const content = envOr("RAG_CONTENT", PRODUCT_KB);
 
 /**
  * Build the RAG tool when an OpenAI (embeddings) key is available; otherwise the
@@ -60,7 +61,5 @@ export const specialistConfig: KaibanAgentConfig = {
   ...(llmConfig ? { llmConfig } : {}),
 };
 
-/** Agent roster for the board. */
-export const RAG_AGENTS = [
-  { agentId: "specialist", name: "Iris", role: "Product Specialist" },
-];
+/** Agent roster for the board: see `roster.ts` (kept apart so the orchestrator builds no tools). */
+export { RAG_AGENTS } from "./roster";

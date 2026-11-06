@@ -99,9 +99,5 @@ export const conciergeConfig: KaibanAgentConfig = {
   ...(llmConfig ? { llmConfig } : {}),
 };
 
-/** Agent roster for the board (drives the Kanban swim-lanes). */
-export const TRIP_AGENTS = [
-  { agentId: "city-selector", name: "Peter Atlas", role: "City Selector" },
-  { agentId: "local-expert", name: "Sophia Lore", role: "Local Expert" },
-  { agentId: "concierge", name: "Maxwell Journey", role: "Travel Concierge" },
-];
+/** Agent roster for the board: see `roster.ts` (kept apart so the orchestrator builds no tools). */
+export { TRIP_AGENTS } from "./roster";

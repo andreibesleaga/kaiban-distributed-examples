@@ -10,7 +10,7 @@ WORKDIR /app
 RUN apk upgrade --no-cache
 COPY package*.json ./
 RUN npm ci --include=dev
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.build.json ./
 COPY shared/ ./shared/
 COPY resume-creation/ ./resume-creation/
 COPY trip-planning/ ./trip-planning/
