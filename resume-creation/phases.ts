@@ -9,9 +9,10 @@ import {
 import type { IMessagingDriver } from "kaiban-distributed";
 import { ExampleStatePublisher } from "../shared/state-publisher";
 import { RunLogger } from "../shared/run-logger";
+import { envInt } from "../shared/env";
 
-export const ANALYZE_WAIT_MS = parseInt(process.env["ANALYZE_WAIT_MS"] ?? "120000", 10);
-export const WRITE_WAIT_MS = parseInt(process.env["WRITE_WAIT_MS"] ?? "180000", 10);
+export const ANALYZE_WAIT_MS = envInt("ANALYZE_WAIT_MS", 120000);
+export const WRITE_WAIT_MS = envInt("WRITE_WAIT_MS", 180000);
 
 type Driver = Pick<IMessagingDriver, "publish">;
 
@@ -26,6 +27,7 @@ export async function runAnalysisPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<PhaseResult> {
   const taskId = await dispatchToAgent(driver, "analyst", {
     instruction:
@@ -37,9 +39,10 @@ export async function runAnalysisPhase(
   pub.taskQueued(taskId, "Analyze candidate profile", "analyst");
 
   const raw = await router
-    .wait(taskId, ANALYZE_WAIT_MS, "profile analysis")
+    .wait(taskId, ANALYZE_WAIT_MS, "profile analysis", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "analyst", "Profile analysis", err.message);
+      runLog.logError("analyst", taskId, "analyst", err.message);
       throw err;
     });
 
@@ -56,6 +59,7 @@ export async function runWritePhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<PhaseResult> {
   const taskId = await dispatchToAgent(driver, "writer", {
     instruction:
@@ -66,9 +70,10 @@ export async function runWritePhase(
   pub.taskQueued(taskId, "Write resume", "writer");
 
   const raw = await router
-    .wait(taskId, WRITE_WAIT_MS, "resume writing")
+    .wait(taskId, WRITE_WAIT_MS, "resume writing", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "writer", "Resume writing", err.message);
+      runLog.logError("writer", taskId, "writer", err.message);
       throw err;
     });
 

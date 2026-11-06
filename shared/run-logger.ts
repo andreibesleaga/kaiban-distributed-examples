@@ -133,7 +133,8 @@ export class RunLogger {
     this.record.durationMs = this.record.endTime - this.record.startTime;
   }
 
-  async flush(dir: string): Promise<string> {
+  /** Writes the run record; resolves with its path, or `null` when the write failed. */
+  async flush(dir: string): Promise<string | null> {
     const target = path.resolve(
       process.cwd(),
       dir,
@@ -146,6 +147,7 @@ export class RunLogger {
       await writeFile(target, JSON.stringify(this.record, null, 2));
     } catch (err) {
       console.error("[RunLogger] Failed to write run log:", err);
+      return null;
     }
     return target;
   }

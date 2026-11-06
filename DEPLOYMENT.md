@@ -13,7 +13,7 @@ chosen by the container's start `command`:
 | Role | Start command | Notes |
 |------|---------------|-------|
 | **gateway** | `node node_modules/kaiban-distributed/dist/src/main/index.js` | HTTP + Socket.io board + A2A + `/health` on `PORT` (3000). Env: `ROLE=gateway`, `AGENT_IDS=<the worker agent ids>` (the gateway runs no agents; its agent card advertises one skill per id). |
-| **worker node** (one per agent) | `node dist/<example>/<role>-node.js` | Consumes its own queue `kaiban-agents-<AGENT_ID>`. Env: `AGENT_ID=<id>`. **One process per agent.** |
+| **worker node** (one per agent) | `node dist/<example>/<role>-node.js` | Consumes its own queue `kaiban-agents-<AGENT_ID>`. Env: `AGENT_ID=<id>` (a label: each worker file fixes its own id and queue). **One process per agent.** |
 | **orchestrator** | `node dist/<example>/orchestrator.js` | Drives the workflow; short-lived. HITL examples (e.g. trip-planning) need a **TTY** (`stdin_open`/`tty`). |
 | **board** | static `viewer/board.html` + `viewer/board.js` | Connects to the gateway via `window.GATEWAY_URL` or `?gateway=<url>` query param. |
 
@@ -37,25 +37,53 @@ AGENT_IDS=city-selector,local-expert,concierge   # gateway role only: the worker
 GATEWAY_URL=http://gateway:3000    # orchestrator → gateway
 
 # Worker
-AGENT_ID=city-selector             # worker role only — picks the agent + its queue
+AGENT_ID=city-selector             # compose / Kubernetes label only: each worker file fixes its own id and queue.
+                                   # Do not put it in a shared .env. Only composer-node.js (social-media-team) reads it.
 
 # Orchestrator (optional)
 WORKFLOW_ID=my-run                 # checkpoint key; default = prefix + hash of the run inputs
 CITY_WAIT_MS=120000                # per-phase timeout; names and defaults are in each example's phases.ts
+                                   # (the compose files pass them to the orchestrator)
 
 # LLM (choose one provider)
 OPENAI_API_KEY=...                 # standard OpenAI
 # OPENROUTER_API_KEY=...           # takes priority over OPENAI_API_KEY if set
-# OPENAI_BASE_URL=http://host:11434/v1   # any OpenAI-compatible server (Ollama/vLLM/LM Studio)
+# OPENAI_BASE_URL=http://host:11434/v1   # any OpenAI-compatible server (Ollama/vLLM/LM Studio);
+#                                        # read only together with OPENAI_API_KEY=<any non-empty value, e.g. ollama>
 LLM_MODEL=gpt-4o-mini
 
 # Tools (per example) / spend guard
 TAVILY_API_KEY=  SERPER_API_KEY=   # web search (trip-planning)
-MAX_WORKFLOW_COST_USD=0.50  MAX_WORKFLOW_TOKENS=0   # 0 = unlimited
+MAX_WORKFLOW_COST_USD=0.50  MAX_WORKFLOW_TOKENS=unlimited   # a number, or the literal `unlimited`; 0 does not mean unlimited
+
+# Emergency STOP ALL (kaiban-distributed >= 2.1.0) — see README "Emergency STOP ALL"
+CONTROL_PLANE_ENABLED=true         # on EVERY process: gateway, workers, orchestrator
+BOARD_JWT_SECRET=...               # gateway: signs board tokens; the viewer reads one from `board.html#token=`
 ```
 
 > RAG (`rag-knowledge-base`) needs `OPENAI_API_KEY` specifically for **embeddings**,
 > even if your chat LLM is OpenRouter or a local model.
+
+## Before exposing the gateway
+
+The stock compose files publish the gateway on `:3000` on all interfaces and start it with no
+authentication. In that state anyone who can reach it can send A2A `message/send` requests (which
+dispatch to your workers and spend your LLM key) and HITL decisions over Socket.io. Before you give
+the gateway a public domain, a load balancer or a LAN address, set these on the gateway:
+
+| Variable | Why |
+|----------|-----|
+| `A2A_JWT_SECRET` | Turns on JWT authentication for the A2A endpoints. Unset = authentication off. |
+| `BOARD_JWT_SECRET` | Requires a board token for the Socket.io handshake and for STOP ALL. The viewer reads the token from `viewer/board.html#token=<token>`. |
+| `SOCKET_CORS_ORIGINS` | The origins allowed to open the board socket (comma-separated). |
+| `NODE_ENV=production` | Makes the gateway refuse a wildcard CORS origin and, with `CONTROL_PLANE_ENABLED=true`, refuse to start without `CHANNEL_SIGNING_SECRET` (kaiban-distributed 2.1.2). The image does not set it. |
+| `CHANNEL_SIGNING_SECRET` | Signs the state, HITL and control channels; the same value on every service. |
+
+The compose files pass all of these from `.env` to the gateway (and the signing secret and control-plane flag to every service); unset means the local defaults.
+
+The Kafka broker in the `*.kafka.yml` files is published on `127.0.0.1:9092` only and uses PLAINTEXT;
+do not publish it further. A Redis password or `rediss://` in `REDIS_URL` (managed Redis on Railway,
+ElastiCache, Azure Cache, Upstash, Memorystore) needs `kaiban-distributed` ≥ 2.1.2.
 
 ## 1. Topology recap
 
@@ -92,7 +120,7 @@ npm install
 cp .env.example .env                # add OPENAI_API_KEY (or OPENROUTER_API_KEY)
 
 docker compose -f trip-planning/docker-compose.yml --env-file .env up -d --build
-docker compose -f trip-planning/docker-compose.yml run --rm orchestrator   # interactive (HITL)
+docker compose -f trip-planning/docker-compose.yml --env-file .env run --rm orchestrator   # interactive (HITL)
 # Kafka variant: trip-planning/docker-compose.kafka.yml
 # Helper: ./scripts/run-example.sh start trip-planning [--kafka]
 ```
@@ -119,11 +147,15 @@ Railway runs one **service per role** from the same repo `Dockerfile`; you overr
 1. **Redis:** add the Railway **Redis** plugin → it exposes `REDIS_URL` to other services.
 2. **gateway service:** deploy the Dockerfile; default `CMD` already runs the gateway.
    Set `ROLE=gateway`, `AGENT_IDS=<worker ids>`, `PORT=3000`, `REDIS_URL`, LLM keys. Expose it
-   (Railway gives a public HTTPS domain → use as the board's `?gateway=` URL).
+   (Railway gives a public HTTPS domain → use as the board's `?gateway=` URL). Read
+   "Before exposing the gateway" below first: a public gateway has no authentication by default.
 3. **one worker service per agent:** same image, override start command, e.g.
    `node dist/trip-planning/city-selector-node.js`, set `AGENT_ID=city-selector` + LLM keys
    + `REDIS_URL`. Repeat for `local-expert`, `concierge`.
-4. **orchestrator:** run as a one-off (`railway run`) or a short-lived service. HITL examples
+4. **orchestrator:** run it inside a Railway service or shell. `railway run <cmd>` runs on your own
+   machine with the service variables injected: the plugin's private `REDIS_URL` does not resolve
+   there (use `REDIS_PUBLIC_URL`, after `npm run build`). A Redis password or `rediss://` in `REDIS_URL`
+   needs `kaiban-distributed` ≥ 2.1.2; earlier versions drop both for the task queues. HITL examples
    need a TTY, so an interactive orchestrator is better triggered from a shell than as a
    background service.
 5. Put LLM/tool keys in Railway **secrets**, not plaintext env.
@@ -167,7 +199,7 @@ Recommended — **ECS / Fargate**, one **service per role** (or one task definit
   `MESSAGING_DRIVER=kafka` (Redis/ElastiCache still required for board + HITL).
 - Put LLM/tool keys in **Secrets Manager** / SSM Parameter Store and inject as task secrets.
 
-Simpler alternative: a single **EC2** box running `docker compose -f <example>/docker-compose.yml up -d`
+Simpler alternative: a single **EC2** box running `docker compose -f <example>/docker-compose.yml --env-file .env up -d`
 — same as Local, just remote. For Kubernetes, use **EKS** (see §8).
 
 ## 6. Azure
@@ -266,23 +298,28 @@ flowchart TB
 each agent on a local Ollama:
 
 ```bash
-# Shared box (192.168.1.10): Redis + gateway. The stock compose file publishes :6379 without a password, so add one first (see Networking & security). The stock compose files now bind Redis to 127.0.0.1, so for a shared box change the port mapping to the box's LAN address.
-docker compose -f docker-compose.infra.yml --env-file .env up -d   # exposes :6379 + :3000
+# Shared box (192.168.1.10): Redis + gateway. The stock compose file binds Redis to 127.0.0.1 and sets no password,
+# so for a shared box change the Redis port mapping to the box's LAN address AND set `requirepass` (see Networking & security).
+# A password or TLS in REDIS_URL needs kaiban-distributed >= 2.1.2.
+docker compose -f docker-compose.infra.yml --env-file .env up -d   # :3000 on all interfaces; :6379 as you changed it
 
 # Workstation — heavyweight writer on an 8B model
 export REDIS_URL=redis://:s3cret@192.168.1.10:6379
+export OPENAI_API_KEY=ollama                       # any non-empty value; the base URL is ignored without it
 export OPENAI_BASE_URL=http://localhost:11434/v1   # local Ollama
 export LLM_MODEL=llama3.1:8b
 AGENT_ID=concierge node dist/trip-planning/concierge-node.js
 
 # Laptop — analyst on a 3B model
 export REDIS_URL=redis://:s3cret@192.168.1.10:6379
+export OPENAI_API_KEY=ollama
 export OPENAI_BASE_URL=http://localhost:11434/v1
 export LLM_MODEL=qwen2.5:3b
 AGENT_ID=local-expert node dist/trip-planning/local-expert-node.js
 
 # Raspberry Pi / mini-PC — lightweight selector on a 1B model
 export REDIS_URL=redis://:s3cret@192.168.1.10:6379
+export OPENAI_API_KEY=ollama
 export OPENAI_BASE_URL=http://localhost:11434/v1
 export LLM_MODEL=llama3.2:1b
 AGENT_ID=city-selector node dist/trip-planning/city-selector-node.js

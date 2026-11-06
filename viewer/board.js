@@ -14,8 +14,19 @@ function escHTML(str) {
 
 // ── Config ───────────────────────────────────────────────────────────────
 
+// Board token for a gateway that sets BOARD_JWT_SECRET (and for STOP ALL): read from the URL
+// fragment #token=... or window.BOARD_TOKEN. The fragment is removed from the address bar at once.
+// The token is kept only in this constant: never logged, never in a query string, never stored.
+const TOKEN_FROM_HASH = new URLSearchParams(location.hash.replace(/^#/, '')).get('token') || '';
+if (TOKEN_FROM_HASH) window.history.replaceState(null, '', location.pathname + location.search);
+const BOARD_TOKEN = TOKEN_FROM_HASH || window.BOARD_TOKEN || '';
+
+// A link must not choose where a configured token goes. With a window.BOARD_TOKEN, ?gateway= is
+// ignored (set window.GATEWAY_URL instead). A #token= belongs to the gateway named in that same address.
+const QUERY_GATEWAY = new URLSearchParams(location.search).get('gateway');
+const QUERY_GATEWAY_IGNORED = Boolean(QUERY_GATEWAY && BOARD_TOKEN && !TOKEN_FROM_HASH);
 const GATEWAY_URL = window.GATEWAY_URL
-  || new URLSearchParams(location.search).get('gateway')
+  || (QUERY_GATEWAY_IGNORED ? '' : QUERY_GATEWAY)
   || 'http://localhost:3000';
 
 document.getElementById('gateway-url-display').textContent = GATEWAY_URL;
@@ -27,6 +38,7 @@ const state = {
   tasks: [],
   workflowStatus: 'INITIAL',
   metadata: null,
+  controlPlane: null, // set by the gateway only when the control plane is on
 };
 
 // Live-duration timer — active while workflow is RUNNING
@@ -93,18 +105,21 @@ function makeTaskCard(task) {
   const statusUpper = (task.status || 'TODO').toUpperCase();
   const isAwaiting = statusUpper === 'AWAITING_VALIDATION';
   const isBlocked = statusUpper === 'BLOCKED';
+  const isStopped = statusUpper === 'STOPPED';
 
   const badge = isAwaiting
     ? '<span class="task-badge task-badge-hitl">⏸ HUMAN DECISION</span>'
+    : isStopped
+    ? '<span class="task-badge task-badge-stopped">⏹ Stopped</span>'
     : isBlocked
       ? '<span class="task-badge task-badge-error">⛔ ERROR</span>'
       : '';
 
-  const resultClass = isBlocked ? ' blocked' : isAwaiting ? ' awaiting' : '';
+  const resultClass = (isBlocked || isStopped) ? ' blocked' : isAwaiting ? ' awaiting' : '';
   const resultText = parseTaskResult(task.result);
   const resultHtml = resultText
     ? resultText.length > 400
-      ? `<details class="task-result${resultClass}">
+      ? `<details class="task-result${resultClass}" data-task-id="${escHTML(task.taskId)}">
            <summary>${escHTML(resultText.slice(0, 120))}…</summary>
            <div class="task-result-full">${escHTML(resultText)}</div>
          </details>`
@@ -127,10 +142,14 @@ function makeTaskCard(task) {
 }
 
 function renderTasks() {
+  // The columns are rebuilt on every update; keep the long results the user has open.
+  const open = new Set(Array.from(document.querySelectorAll('details[open][data-task-id]'), d => d.dataset.taskId));
   const cols = { TODO: [], DOING: [], AWAITING_VALIDATION: [], DONE: [], BLOCKED: [] };
 
   for (const task of state.tasks) {
-    const key = (task.status || 'TODO').toUpperCase();
+    const rawKey = (task.status || 'TODO').toUpperCase();
+    // STOPPED tasks (emergency stop) are shown in the Blocked column with a Stopped badge
+    const key = rawKey === 'STOPPED' ? 'BLOCKED' : rawKey;
     if (cols[key]) cols[key].push(task);
   }
 
@@ -146,6 +165,10 @@ function renderTasks() {
   document.getElementById('cnt-await').textContent = cols.AWAITING_VALIDATION.length;
   document.getElementById('cnt-done').textContent = cols.DONE.length;
   document.getElementById('cnt-blocked').textContent = cols.BLOCKED.length;
+
+  document.querySelectorAll('details[data-task-id]').forEach(d => {
+    if (open.has(d.dataset.taskId)) d.open = true;
+  });
 }
 
 function renderWorkflow() {
@@ -170,12 +193,9 @@ function renderBanners() {
 
   if (ws === 'FINISHED') {
     bannerFinished.style.display = 'block';
-    const pub = doneTasks.find(t => String(t.result || '').includes('Published'));
+    const pub = doneTasks.find(t => String(t.result || '').includes('Completed'));
     document.getElementById('banner-finished-msg').textContent =
-      pub ? `"${pub.title}" was done successfully` : 'finished';
-    // Highlight economics section on completion
-    const econSection = document.querySelector('.swarm-meta');
-    if (econSection) econSection.classList.add('economics-finished');
+      pub ? `"${pub.title}" was completed successfully` : 'Workflow complete';
 
   } else if (ws === 'STOPPED') {
     bannerStopped.style.display = 'block';
@@ -224,31 +244,32 @@ function renderBanners() {
   }
 }
 
+function setMeta(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+/** Fill the panel from state.metadata; a field the run has not produced yet shows "—". */
 function renderEconomics() {
-  const meta = state.metadata;
-  if (!meta) return;
-  if (meta.totalTokens !== undefined) {
-    document.getElementById('meta-tokens').textContent = Number(meta.totalTokens).toLocaleString();
-  }
-  if (meta.estimatedCost !== undefined) {
-    document.getElementById('meta-cost').textContent = `$${Number(meta.estimatedCost).toFixed(4)}`;
-  }
-  if (meta.startTime) {
-    document.getElementById('meta-start').textContent = new Date(meta.startTime).toLocaleTimeString();
-  }
-  if (meta.endTime) {
-    document.getElementById('meta-end').textContent = new Date(meta.endTime).toLocaleTimeString();
-  }
+  const meta = state.metadata || {};
+  const running = state.workflowStatus === 'RUNNING';
+  setMeta('meta-tokens', meta.totalTokens !== undefined ? Number(meta.totalTokens).toLocaleString() : '—');
+  setMeta('meta-cost', meta.estimatedCost !== undefined ? `$${Number(meta.estimatedCost).toFixed(4)}` : '—');
+  setMeta('meta-start', meta.startTime ? new Date(meta.startTime).toLocaleTimeString() : '—');
+  setMeta('meta-end', meta.endTime ? new Date(meta.endTime).toLocaleTimeString() : running ? 'running…' : '—');
   // Duration — live while running, fixed once ended
-  const durEl = document.getElementById('meta-duration');
-  if (durEl && meta.startTime) {
-    const startMs = Number(new Date(meta.startTime));
+  let duration = '—';
+  if (meta.startTime) {
     const endMs = meta.endTime ? Number(new Date(meta.endTime)) : Date.now();
-    const totalSec = Math.floor((endMs - startMs) / 1000);
+    const totalSec = Math.max(0, Math.floor((endMs - Number(new Date(meta.startTime))) / 1000));
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
-    durEl.textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+    duration = m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
+  setMeta('meta-duration', duration);
+  // The green "finished" highlight belongs to a finished run only
+  const section = document.getElementById('economics-section') || document.querySelector('.swarm-meta');
+  if (section) section.classList.toggle('economics-finished', state.workflowStatus === 'FINISHED');
 }
 
 function render() {
@@ -256,6 +277,7 @@ function render() {
   renderTasks();
   renderWorkflow();
   renderBanners();
+  renderControl();
   renderEconomics();
 }
 
@@ -304,6 +326,13 @@ function applyDelta(delta) {
     state.metadata = { ...(state.metadata || {}), ...delta.metadata };
   }
 
+  if (delta.controlPlane) {
+    state.controlPlane = { ...delta.controlPlane };
+  }
+  if (delta.control && state.controlPlane) {
+    state.controlPlane = applyControlAck(state.controlPlane, delta.control);
+  }
+
   if (delta.inputs?.topic) {
     document.getElementById('topic-label').textContent = `Topic: "${delta.inputs.topic}"`;
   }
@@ -312,15 +341,22 @@ function applyDelta(delta) {
 // ── Log delta events ─────────────────────────────────────────────────────
 
 const AGENT_ICONS = { IDLE: '⚪', EXECUTING: '🟢', THINKING: '🔵', ERROR: '🔴' };
-const TASK_ICONS = { DOING: '🔵', DONE: '✅', BLOCKED: '🔴', AWAITING_VALIDATION: '⏸' };
+const TASK_ICONS = { DOING: '🔵', DONE: '✅', BLOCKED: '🔴', AWAITING_VALIDATION: '⏸', STOPPED: '⏹' };
 
 function logDelta(delta) {
+  if (delta.control) {
+    addLog('CONTROL', controlMessage(delta.control), true);
+  }
+
   if (delta.teamWorkflowStatus) {
     addLog('WORKFLOW', `Status → ${delta.teamWorkflowStatus}`, true);
   }
 
   if (Array.isArray(delta.agents)) {
     for (const a of delta.agents) {
+      // A worker heartbeat repeats an unchanged agent state every 15 s: not an event.
+      const before = state.agents.find(x => x.agentId === a.agentId);
+      if (before && before.status === a.status && before.currentTaskId === a.currentTaskId) continue;
       const icon = AGENT_ICONS[a.status] || '⬡';
       const taskRef = a.currentTaskId ? ` [${a.currentTaskId.slice(-8)}]` : '';
       const hi = a.status === 'EXECUTING' || a.status === 'ERROR';
@@ -343,14 +379,116 @@ function logDelta(delta) {
   }
 }
 
+// ── Emergency STOP ALL (ADR-025) ─────────────────────────────────────────
+// The button, the confirmation and the banner exist only while the gateway snapshot
+// says the control plane is on (CONTROL_PLANE_ENABLED). Same behaviour as the React board.
+
+const STOP_ACK_TIMEOUT_MS = 8000;
+
+function timeOf(ms) {
+  const d = new Date(ms);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+/** Count node acknowledgements for the latest stop; a newer stop resets the count. */
+function applyControlAck(plane, ack) {
+  const { commandId, issuedAt, issuedBy, reason } = ack;
+  const next = !plane.lastStop || issuedAt > plane.lastStop.issuedAt
+    ? { enabled: true, lastStop: { commandId, issuedAt, issuedBy, ...(reason ? { reason } : {}) }, acks: 0 }
+    : { ...plane };
+  if (ack.outcome !== 'issued' && commandId === next.lastStop?.commandId) next.acks++;
+  return next;
+}
+
+/** One event-log line for a control ack. */
+function controlMessage(ack) {
+  if (ack.outcome === 'issued') {
+    return `STOP ALL issued by ${ack.issuedBy}${ack.reason ? ` — ${ack.reason}` : ''}`;
+  }
+  const who = ack.agentId ? `${ack.agentId} on ${ack.nodeId}` : ack.nodeId;
+  return `${who}: ${ack.outcome}, ${ack.aborted} task(s) killed`;
+}
+
+function renderControl() {
+  const plane = state.controlPlane;
+  const stop = plane?.lastStop;
+  document.getElementById('stop-all-btn').hidden = !plane?.enabled;
+  document.getElementById('banner-control').hidden = !stop;
+  if (!stop) return;
+  document.getElementById('banner-control-msg').textContent =
+    `Emergency stop at ${timeOf(stop.issuedAt)} by ${stop.issuedBy}` + (stop.reason ? ` — ${stop.reason}` : '');
+  const acks = plane.acks || 0;
+  document.getElementById('banner-control-acks').textContent =
+    `${acks} node acknowledgement${acks === 1 ? '' : 's'}`;
+}
+
+function showControlError(message) {
+  addLog('ERROR', message, true);
+  const el = document.getElementById('control-error');
+  el.textContent = message;
+  el.hidden = false;
+}
+
+function clearControlError() {
+  const el = document.getElementById('control-error');
+  el.textContent = '';
+  el.hidden = true;
+}
+
+function sendStopAll(reason) {
+  clearControlError();
+  if (!socket.connected) {
+    showControlError('Cannot send STOP ALL — not connected to the gateway. Run npm run stop-all instead.');
+    return;
+  }
+  addLog('CONTROL', 'Sending STOP ALL…', true);
+  let answered = false;
+  const timer = setTimeout(() => {
+    if (!answered) {
+      showControlError(`STOP ALL not confirmed by the gateway within ${STOP_ACK_TIMEOUT_MS / 1000}s — check the gateway, or run npm run stop-all`);
+    }
+  }, STOP_ACK_TIMEOUT_MS);
+
+  socket.emit('control:stop-all', reason ? { reason } : {}, response => {
+    answered = true;
+    window.clearTimeout(timer);
+    if (response?.ok) {
+      clearControlError(); // a late confirmation replaces the timeout alert
+      addLog('CONTROL', `STOP ALL issued (command ${String(response.commandId).slice(0, 8)})`, true);
+    } else {
+      showControlError(`STOP ALL refused: ${response?.error ?? 'gateway error'}`);
+    }
+  });
+}
+
+function wireStopAll() {
+  const dialog = document.getElementById('stop-all-dialog');
+  const reasonInput = document.getElementById('stop-all-reason');
+  document.getElementById('stop-all-btn').addEventListener('click', () => {
+    reasonInput.value = '';
+    dialog.showModal();
+  });
+  document.getElementById('stop-all-cancel').addEventListener('click', () => dialog.close());
+  document.getElementById('stop-all-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const reason = reasonInput.value.trim();
+    dialog.close();
+    sendStopAll(reason || undefined);
+  });
+}
+
 // ── Socket.io ────────────────────────────────────────────────────────────
 
 addLog('INIT', `Connecting to ${GATEWAY_URL}`);
+if (QUERY_GATEWAY_IGNORED) {
+  addLog('INIT', 'Ignoring ?gateway=: a board token is configured. Set window.GATEWAY_URL to change the gateway.', true);
+}
 
 const socket = io(GATEWAY_URL, {
   transports: ['websocket', 'polling'],
   reconnectionAttempts: Infinity,
   reconnectionDelay: 2000,
+  ...(BOARD_TOKEN ? { auth: { token: BOARD_TOKEN } } : {}),
 });
 
 socket.on('connect', () => {
@@ -358,10 +496,11 @@ socket.on('connect', () => {
   state.agents = [];
   state.tasks = [];
   state.workflowStatus = 'INITIAL';
+  state.controlPlane = null;
   state.metadata = null;
   if (durationTimer) { clearInterval(durationTimer); durationTimer = null; }
-  // Request full snapshot replay from gateway
-  socket.emit('state:request');
+  // No 'state:request': the gateway sends the snapshot on connection, and asking again
+  // would apply (and log) it twice.
 
   document.getElementById('conn-badge').className = 'badge badge-live';
   document.getElementById('conn-badge').textContent = '● LIVE';
@@ -385,11 +524,9 @@ socket.on('connect_error', err => {
 });
 
 socket.on('state:update', delta => {
+  logDelta(delta); // first: a heartbeat is told from a change by the previous agent state
   applyDelta(delta);
-  logDelta(delta);
   render();
 });
 
-socket.on('task:completed', data => {
-  addLog('DONE', `Task ${data.taskId} completed by ${data.agentId}`, true);
-});
+wireStopAll();

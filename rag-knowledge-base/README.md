@@ -27,7 +27,7 @@ retrieving facts versus guessing.
 ```bash
 cp .env.example .env            # from the repo root; set OPENAI_API_KEY
 docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env up -d --build
-docker compose -f rag-knowledge-base/docker-compose.yml run --rm orchestrator
+docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env run --rm orchestrator
 # watch the live Kanban: open viewer/board.html
 ```
 
@@ -35,15 +35,21 @@ Ask your own questions (|| separated):
 
 ```bash
 QUESTIONS="Do I need a C-wire?||What voice assistants are supported?" \
-  docker compose -f rag-knowledge-base/docker-compose.yml run --rm orchestrator
+  docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env run --rm orchestrator
 ```
 
 Use your own corpus instead of the Nimbus T3 KB:
 
 ```bash
 RAG_CONTENT="$(cat my-product-docs.md)" \
-  docker compose -f rag-knowledge-base/docker-compose.yml run --rm orchestrator
+  docker compose -f rag-knowledge-base/docker-compose.yml --env-file .env up -d --force-recreate specialist
 ```
+
+`RAG_CONTENT` is read by the **specialist** worker, not the orchestrator, so recreate the specialist
+with it and then run the orchestrator as above. The orchestrator container has no OpenAI key and may
+print "running WITHOUT retrieval"; only the specialist's own log line counts.
+
+**STOP ALL:** with `CONTROL_PLANE_ENABLED=true` (see the [root README](../README.md#emergency-stop-all)) a stop ends this run `STOPPED`, clears its checkpoint and exits with code 2.
 
 ## Run it (local dev)
 

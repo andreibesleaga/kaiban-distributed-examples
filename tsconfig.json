@@ -25,7 +25,8 @@
     "resume-creation/**/*.ts",
     "trip-planning/**/*.ts",
     "social-media-team/**/*.ts",
-    "rag-knowledge-base/**/*.ts"
+    "rag-knowledge-base/**/*.ts",
+    "tests/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

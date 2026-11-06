@@ -3,7 +3,7 @@ import { startAgentNode } from "kaiban-distributed/shared";
 import { conciergeConfig, CONCIERGE_QUEUE } from "./team-config";
 
 startAgentNode({
-  agentId: process.env["AGENT_ID"] ?? "concierge",
+  agentId: "concierge", // fixed: the orchestrator dispatches to this id, so AGENT_ID is not read
   queue: CONCIERGE_QUEUE,
   agentConfig: conciergeConfig,
   displayName: "Maxwell Journey",

@@ -12,8 +12,9 @@ import {
 import type { IMessagingDriver } from "kaiban-distributed";
 import { ExampleStatePublisher } from "../shared/state-publisher";
 import { RunLogger } from "../shared/run-logger";
+import { envInt } from "../shared/env";
 
-export const ANSWER_WAIT_MS = parseInt(process.env["ANSWER_WAIT_MS"] ?? "180000", 10);
+export const ANSWER_WAIT_MS = envInt("ANSWER_WAIT_MS", 180000);
 
 type Driver = Pick<IMessagingDriver, "publish">;
 
@@ -29,6 +30,7 @@ export async function runAnswerPhase(
   pub: ExampleStatePublisher,
   driver: Driver,
   runLog: RunLogger,
+  signal?: AbortSignal,
 ): Promise<AnswerResult> {
   const taskId = await dispatchToAgent(driver, "specialist", {
     instruction: `Answer this customer question using the knowledge-base retrieval tool. Cite the relevant section. If the answer is not in the knowledge base, say so.\n\nQuestion: ${question}`,
@@ -39,9 +41,10 @@ export async function runAnswerPhase(
   pub.taskQueued(taskId, question, "specialist");
 
   const raw = await router
-    .wait(taskId, ANSWER_WAIT_MS, "answer")
+    .wait(taskId, ANSWER_WAIT_MS, "answer", signal)
     .catch((err: Error) => {
       pub.taskFailed(taskId, "specialist", "Answer", err.message);
+      runLog.logError("specialist", taskId, "specialist", err.message);
       throw err;
     });
 

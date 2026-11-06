@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "shared/**/*.ts",
+    "resume-creation/**/*.ts",
+    "trip-planning/**/*.ts",
+    "social-media-team/**/*.ts",
+    "rag-knowledge-base/**/*.ts"
+  ]
+}

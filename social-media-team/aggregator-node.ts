@@ -3,7 +3,7 @@ import { startAgentNode } from "kaiban-distributed/shared";
 import { aggregatorConfig, AGGREGATOR_QUEUE } from "./team-config";
 
 startAgentNode({
-  agentId: process.env["AGENT_ID"] ?? "aggregator",
+  agentId: "aggregator", // fixed: the orchestrator dispatches to this id, so AGENT_ID is not read
   queue: AGGREGATOR_QUEUE,
   agentConfig: aggregatorConfig,
   displayName: "Mosaic",

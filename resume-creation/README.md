@@ -21,7 +21,7 @@ Analyst
 ```bash
 cp .env.example .env            # from the repo root; set OPENAI_API_KEY (or OPENROUTER_API_KEY)
 docker compose -f resume-creation/docker-compose.yml --env-file .env up -d --build
-docker compose -f resume-creation/docker-compose.yml run --rm orchestrator
+docker compose -f resume-creation/docker-compose.yml --env-file .env run --rm orchestrator
 # watch the live Kanban: open viewer/board.html
 ```
 
@@ -29,8 +29,10 @@ Use your own candidate notes:
 
 ```bash
 CANDIDATE="$(cat my-notes.txt)" \
-  docker compose -f resume-creation/docker-compose.yml run --rm orchestrator
+  docker compose -f resume-creation/docker-compose.yml --env-file .env run --rm orchestrator
 ```
+
+**STOP ALL:** with `CONTROL_PLANE_ENABLED=true` (see the [root README](../README.md#emergency-stop-all)) a stop ends this run `STOPPED`, clears its checkpoint and exits with code 2.
 
 ## Run it (local dev)
 

@@ -3,7 +3,7 @@ import { startAgentNode } from "kaiban-distributed/shared";
 import { specialistConfig, SPECIALIST_QUEUE } from "./team-config";
 
 startAgentNode({
-  agentId: process.env["AGENT_ID"] ?? "specialist",
+  agentId: "specialist", // fixed: the orchestrator dispatches to this id, so AGENT_ID is not read
   queue: SPECIALIST_QUEUE,
   agentConfig: specialistConfig,
   displayName: "Iris",
