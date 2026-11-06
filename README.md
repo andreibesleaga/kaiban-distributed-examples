@@ -275,7 +275,7 @@ For how one example is wired (files, queues, checkpoints, board), see
 ## Verification status
 
 - GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`, `npm run typecheck`, `npm test` and
-  `npm run build` on Node 22 for every push and pull request to `main`. The 24 tests are deterministic
+  `npm run build` on Node 22 for every push and pull request to `main`. The 26 tests are deterministic
   (no Redis, no network, no key): they cover the shared helpers, the run-end and compose-phase failure
   paths, and the compose and orchestrator wiring.
 - Nothing in CI starts Redis, a worker or an LLM call. A full run needs your own LLM key (and tool keys

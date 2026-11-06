@@ -22,7 +22,7 @@ flowchart LR
 
 Every example has the same four kinds of process, started from one Docker image
 (`Dockerfile`). Names below are the files in `trip-planning/`; the other examples use the same
-file roles.
+file roles, with the topologies shown after the "How to read it" list.
 
 ```mermaid
 flowchart LR
@@ -32,16 +32,30 @@ flowchart LR
   Q1 --> W1["city-selector-node.ts"]
   Q2 --> W2["local-expert-node.ts"]
   Q3 --> W3["concierge-node.ts"]
-  W1 -->|"completion event"| ROUTER["CompletionRouter<br/>(in orchestrator)"]
-  W2 -->|"completion event"| ROUTER
-  W3 -->|"completion event"| ROUTER
+  W1 -->|"kaiban-events-completed / kaiban-events-failed"| ROUTER["CompletionRouter<br/>(in orchestrator)"]
+  W2 -->|"kaiban-events-completed / kaiban-events-failed"| ROUTER
+  W3 -->|"kaiban-events-completed / kaiban-events-failed"| ROUTER
   ROUTER --> ORCH
   ORCH -->|"memoize(phase)"| CP[("RedisCheckpointStore")]
   ORCH -->|"ExampleStatePublisher<br/>shared/state-publisher.ts"| REDIS[("Redis kaiban-state-events")]
   GW["gateway<br/>(kaiban-distributed main/index.js)"] --- REDIS
   BOARD["viewer/board.html"] -->|"Socket.io"| GW
   ORCH -.->|"shared/gateway.ts: health + agent card"| GW
+  HUMAN["terminal prompt or React board"] -->|"decision"| HITL[("Redis kaiban-hitl-decisions")]
+  HITL -->|"waitForHITLDecision"| ORCH
+  STOP["STOP ALL<br/>(viewer button or npm run stop-all)"] --> GW
+  STOP --> CTRL[("Redis kaiban-control")]
+  GW --> CTRL
+  CTRL -->|"abort the model call"| W1
+  CTRL -->|"abort the model call"| W2
+  CTRL -->|"abort the model call"| W3
+  CTRL -->|"stopSignal: exit code 2"| ORCH
 ```
+
+State, HITL and control channels are Redis pub/sub in both transports (Redis and Kafka); the
+queues and completion events use the chosen transport. The STOP ALL arrows exist only with
+`CONTROL_PLANE_ENABLED=true`; the viewer button goes through the gateway, `npm run stop-all` publishes
+straight to `kaiban-control`.
 
 How to read it:
 
@@ -53,6 +67,31 @@ How to read it:
   `WORKFLOW_ID` (default: a hash of the run inputs) skips phases already stored in Redis.
 - The orchestrator keeps working if the gateway is down; only the board is lost
   (`shared/gateway.ts` is best-effort).
+- Only trip-planning has the human-review channel. A stop ends its wait.
+
+### The other topologies
+
+The queues, checkpoints, board and STOP ALL paths are the same as above; only the phases differ.
+
+```mermaid
+flowchart LR
+  subgraph resume["resume-creation: 2 steps"]
+    direction LR
+    RA["analyst"] --> RW["writer"]
+  end
+  subgraph social["social-media-team: fan-out and fan-in (waitAll)"]
+    direction LR
+    EX["extractor"] --> C1["tweet"] & C2["linkedin"] & C3["discord"] & C4["blog"]
+    C1 & C2 & C3 & C4 --> AG["aggregator"]
+  end
+  subgraph rag["rag-knowledge-base: 1 agent"]
+    direction LR
+    SP["specialist + SimpleRAG tool"]
+  end
+```
+
+In social-media-team the four composers run at once; `waitAll` tolerates a failed composer, and the
+run fails only if all four fail. The orchestrator dispatches every step; the arrows show the order of the phases.
 
 ## Shared code
 
@@ -60,5 +99,11 @@ How to read it:
 |------|------|
 | `shared/state-publisher.ts` | `ExampleStatePublisher`: publishes agent roster and task states to the board |
 | `shared/run-logger.ts` | `RunLogger`: collects task results and totals, writes a transcript to `<example>/runs/` |
-| `shared/gateway.ts` | `connectGateway`: best-effort health check, agent-card read and Socket.io echo |
+| `shared/gateway.ts` | `connectGateway`: best-effort health check, agent-card read and Socket.io echo. It sends no board token: with `BOARD_JWT_SECRET` set on the gateway the console echo is skipped; the run is unaffected |
 | `shared/agent-card.ts` | `parseAgentCardSkills`: reads skills from an A2A agent card |
+| `shared/ask.ts` | `ask`: terminal prompt that survives a closed stdin and ends on a stop |
+| `shared/env.ts` | `envOr`, `firstEnv`, `envInt`: read optional variables; an empty compose value counts as unset |
+| `shared/run-end.ts` | `endFailedRun`, `exitUnlessZero`: board status and exit code when a run stops or fails (0, 1, 2) |
+| `shared/stop-signal.ts` | `openStopSignal`: the STOP ALL signal for an orchestrator, or `null` when the control plane is off |
+
+Each example also has a `team-config.ts`; trip-planning and rag-knowledge-base add a `roster.ts` (the agents shown on the board, without building their tools).

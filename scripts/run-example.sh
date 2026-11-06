@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Start / stop a fully-containerised showcase example (redis + gateway + worker
-# nodes), then drop you into the orchestrator's interactive TTY for HITL.
+# nodes), then run its orchestrator (interactive for trip-planning, which has a
+# human-review step).
 #
 #   ./scripts/run-example.sh start trip-planning
 #   ./scripts/run-example.sh start trip-planning --kafka
 #   ./scripts/run-example.sh stop  trip-planning
+#   ./scripts/run-example.sh stop  trip-planning --kafka   # stop the variant you started
 #
 set -euo pipefail
 
@@ -35,7 +37,7 @@ case "$ACTION" in
     echo "▶ Bringing up $EXAMPLE ($COMPOSE) …"
     docker compose -f "$COMPOSE" ${ENV_ARG[@]+"${ENV_ARG[@]}"} up -d --build
     echo "✓ Stack up. Board: open viewer/board.html (gateway http://localhost:3000)"
-    echo "▶ Starting orchestrator (interactive HITL) …"
+    echo "▶ Starting orchestrator …"
     # Keep the orchestrator's exit code (1 = failed, 2 = emergency STOP ALL); do not hide it.
     rc=0
     docker compose -f "$COMPOSE" ${ENV_ARG[@]+"${ENV_ARG[@]}"} run --rm orchestrator || rc=$?
