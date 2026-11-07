@@ -54,7 +54,7 @@ print "running WITHOUT retrieval"; only the specialist's own log line counts.
 ## Run it (local dev)
 
 ```bash
-docker compose -f docker-compose.infra.yml --env-file .env up -d --build
+AGENT_IDS=specialist docker compose -f docker-compose.infra.yml --env-file .env up -d --build
 npx ts-node rag-knowledge-base/specialist-node.ts
 npx ts-node rag-knowledge-base/orchestrator.ts
 ```
@@ -69,3 +69,16 @@ npx ts-node rag-knowledge-base/orchestrator.ts
 | `phases.ts` | One dispatch → retrieve → answer |
 | `orchestrator.ts` | Checkpointed Q&A batch + budget guard + board |
 | `docker-compose.yml` | Redis + gateway + specialist + orchestrator |
+
+## Orchestrator settings
+
+Every variable below is optional. Compose reads it from `.env` (`--env-file .env`) or from the
+shell; an empty value counts as unset.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `QUESTIONS` | three built-in Nimbus T3 questions | Questions separated by `\|\|`. |
+| `ANSWER_WAIT_MS` | `180000` | Time allowed for each answer. |
+| `WORKFLOW_ID` | `rag-` plus the first 16 hex characters of the SHA-256 of the questions | Checkpoint key. A re-run with the same value resumes; set a different value to start a fresh run on the same inputs. |
+
+`RAG_CONTENT` is read by the specialist worker, not the orchestrator (see above). The spend caps (`MAX_WORKFLOW_COST_USD`, `MAX_WORKFLOW_TOKENS`) are in the [root README](../README.md#quick-start).

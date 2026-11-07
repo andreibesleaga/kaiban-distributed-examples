@@ -15,21 +15,24 @@ Design overview: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Deployment:
 
 - `<example>/`: `team-config.ts`, one `<role>-node.ts` per agent, `phases.ts`, `orchestrator.ts`,
   `docker-compose.yml` (some also `docker-compose.kafka.yml`) and a README.
-- `shared/`: board state publisher, run logger, gateway connection, agent-card parser.
+- `shared/`: board state publisher, run logger, gateway connection, agent-card parser, env readers, terminal prompt, run-end and stop handling (table in `docs/ARCHITECTURE.md`).
 - `viewer/`: static HTML board. `scripts/run-example.sh`: start or stop one example.
 - `docker-compose.infra.yml`: Redis and gateway only, for the ts-node development path.
-- `Dockerfile`: one image for every role. `.github/workflows/ci.yml`: install, typecheck, build.
+- `Dockerfile`: one image for every role. `.github/workflows/ci.yml`: install, typecheck, test, build.
 
 ## Commands
 
 ```bash
 npm ci                  # install exactly what package-lock.json pins
 npm run typecheck       # tsc --noEmit
+npm test                # 26 deterministic tests (no Redis, no network, no Docker)
 npm run build           # tsc into dist/ (ignored by git)
 ```
 
-There are no automated tests. Running an example needs an LLM key and Docker; see the README
-quick start. Never put real keys in tracked files: `.env` is git-ignored, `.env.example` is the
+The tests in `tests/` cover the shared helpers, the failure paths and the compose and orchestrator
+wiring; they need no key and no Docker. `tests/wiring.test.ts` counts the compose files ("there are
+seven compose files"): raise the number when you add one. Running an example needs an LLM key and
+Docker; see the README quick start. Never put real keys in tracked files: `.env` is git-ignored, `.env.example` is the
 template.
 
 ## Rules

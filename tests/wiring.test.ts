@@ -85,3 +85,28 @@ test("every gateway block forwards the security variables from .env", () => {
     }
   }
 });
+
+test("every gateway block forwards TRUST_PROXY and A2A_PUBLIC_URL (default = the runtime's own)", () => {
+  for (const file of composeFiles) {
+    const gateway = services(file).get("gateway") ?? "";
+    assert.match(gateway, /TRUST_PROXY: \$\{TRUST_PROXY:-\}/, file);
+    assert.match(gateway, /A2A_PUBLIC_URL: \$\{A2A_PUBLIC_URL:-http:\/\/localhost:3000\}/, file);
+  }
+});
+
+test("every worker passes the per-agent token caps; every orchestrator passes WORKFLOW_ID", () => {
+  for (const file of composeFiles.filter((f) => f !== "docker-compose.infra.yml")) {
+    const text = read(file);
+    const anchor = /x-worker-env[\s\S]*?\n\n/.exec(text)?.[0] ?? "";
+    for (const [name, block] of services(file)) {
+      if (name === "orchestrator") {
+        assert.match(block, /WORKFLOW_ID: \$\{WORKFLOW_ID:-\}/, `${file}: orchestrator`);
+      } else if (/^ {4}environment:/m.test(block) && /AGENT_ID:/.test(block) && name !== "gateway") {
+        const own = /<<: \*worker-env/.test(block) ? anchor + block : block;
+        for (const v of ["MAX_TOKEN_BUDGET", "MAX_TASK_TOKEN_BUDGET"]) {
+          assert.match(own, new RegExp(`${v}: \\$\\{${v}:-\\}`), `${file}: ${name} lacks ${v}`);
+        }
+      }
+    }
+  }
+});
