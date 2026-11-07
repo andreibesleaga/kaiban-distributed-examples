@@ -80,7 +80,7 @@ the gateway a public domain, a load balancer or a LAN address, set these on the 
 | `SOCKET_CORS_ORIGINS` | The origins allowed to open the board socket (comma-separated). |
 | `NODE_ENV=production` | With it, the gateway refuses to start unless `BOARD_JWT_SECRET`, `A2A_JWT_SECRET` and `CHANNEL_SIGNING_SECRET` are all set, each at least 32 bytes and all three different. It also refuses a wildcard CORS origin, so `SOCKET_CORS_ORIGINS` becomes required. Any worker or orchestrator that has `NODE_ENV=production` and `CONTROL_PLANE_ENABLED` also needs `CHANNEL_SIGNING_SECRET`. The image does not set it. |
 | `CHANNEL_SIGNING_SECRET` | Signs the state, HITL and control channels. Use the same value on every service. It must differ from the other two secrets. |
-| `TRUST_PROXY=true` | Set it behind Railway, an ALB, an ingress or Nginx, so per-client rate limits see the client address and not the proxy. |
+| `TRUST_PROXY=true` | Set it behind Railway, an ALB, an ingress or Nginx, so per-client rate limits see the client address and not the proxy. Only when the gateway is reachable through that proxy alone (bind port 3000 to the private network or `127.0.0.1`; the shipped compose files publish it on every interface) and the proxy sets `X-Forwarded-For` itself; otherwise a direct caller can forge the header and dodge the per-client limits. |
 | `A2A_PUBLIC_URL` | The gateway's public HTTPS URL; it goes into the agent card (default `http://localhost:3000`). |
 
 Make three separate secrets, for example:

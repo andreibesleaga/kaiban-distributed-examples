@@ -123,7 +123,7 @@ Every orchestrator ends with one of these codes:
 | Code | Meaning |
 |------|---------|
 | 0 | Finished; or stopped by the budget guard (board status `STOPPED`, checkpoint cleared); or, in trip-planning, rejected by the reviewer. |
-| 1 | Error. The board shows `FAILED` and the checkpoint is kept, so a re-run with the same inputs resumes. |
+| 1 | Error. The board shows `STOPPED` with the reason `Workflow error: <message>` (the run log records `FAILED`) and the checkpoint is kept, so a re-run with the same inputs resumes. |
 | 2 | Emergency STOP ALL. The board shows `STOPPED` and the checkpoint is cleared. |
 
 A run stopped by the budget guard also exits 0: read the console or the board banner.
