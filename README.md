@@ -69,7 +69,7 @@ where Kaiban Distributed is meant to live:
   information and running whole systems of work on them — become legible, governable, and affordable.
 
 > 📖 Built alongside and featured in the author's upcoming book **Agentic AI Architectures**. Deep dive:
-> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.1.2), with its examples (`blog-team` and `global-research`),
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.1.3), with its examples (`blog-team` and `global-research`),
 > and its [companion Medium article](https://lnkd.in/d_DSNFju).
 
 > This is a separate repo by design — the core `kaiban-distributed` package keeps 100% coverage
@@ -145,7 +145,7 @@ Each example README ends with a table of its inputs, timeouts and `WORKFLOW_ID`.
 ## Prerequisites
 
 - Node.js ≥ 22, Docker (for Redis/Kafka + the containerised stacks)
-- This repo needs `kaiban-distributed` ^2.1.2 (see `package.json`).
+- This repo needs `kaiban-distributed` ^2.1.3 (see `package.json`).
 - An LLM key: `OPENAI_API_KEY` **or** `OPENROUTER_API_KEY` (or a local
   OpenAI-compatible endpoint via `OPENAI_BASE_URL`, together with `OPENAI_API_KEY` set to any non-empty value such as `ollama`)
 - Optional per-example tool keys (see each example's README): `TAVILY_API_KEY`,
