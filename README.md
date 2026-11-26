@@ -68,8 +68,8 @@ where Kaiban Distributed is meant to live:
   pipelines with agents plus human checkpoints so the most complex tasks — reading streams of
   information and running whole systems of work on them — become legible, governable, and affordable.
 
-> 📖 Built alongside and featured in the author's upcoming book **Agentic AI Architectures**. Deep dive:
-> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.1.3), with its examples (`blog-team` and `global-research`),
+> 📖 Built alongside and featured in the author's book *Agentic AI Architectures: Multi-Agent System Patterns with TypeScript* by Andrei N. Besleaga (Wiley; publication planned for 2026): https://agenticaiarchitectures.com. Deep dive:
+> the [Kaiban Distributed](https://github.com/andreibesleaga/kaiban-distributed) runtime (v2.1.3, as pinned in this repository's lockfile), with its examples (`blog-team` and `global-research`),
 > and its [companion Medium article](https://lnkd.in/d_DSNFju).
 
 > This is a separate repo by design — the core `kaiban-distributed` package keeps 100% coverage
